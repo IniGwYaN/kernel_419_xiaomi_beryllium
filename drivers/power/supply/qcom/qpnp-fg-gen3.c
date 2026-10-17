@@ -757,14 +757,15 @@ static int fg_get_prop_capacity(struct fg_dev *fg, int *val)
 		return 0;
 	}
 
-	if (fg->battery_missing) {
+	/*
+	 * Not ready / missing: report a value, never an error. healthd turns a
+	 * failed capacity read into 0 %, and BatteryService shuts the phone
+	 * down on 0 % while unplugged ("battery dies, but still has charge
+	 * after restart"). 4.9 behaves the same way.
+	 */
+	if (fg->battery_missing || !fg->soc_reporting_ready) {
 		*val = BATT_MISS_SOC;
 		return 0;
-	}
-
-	if (!fg->soc_reporting_ready) {
-		*val = BATT_MISS_SOC;
-		return -EBUSY;
 	}
 
 	if (is_batt_empty(fg)) {
@@ -3812,8 +3813,11 @@ static int fg_psy_get_property(struct power_supply *psy,
 		rc = fg_get_prop_capacity(fg, &pval->intval);
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 		// Using smooth battery capacity.
-		if (fg->param.batt_soc >= 0)
+		if (fg->param.batt_soc >= 0) {
 			pval->intval = fg->param.batt_soc;
+			/* a transient SRAM/SPMI read error must not read as 0 % */
+			rc = 0;
+		}
 #endif
 		break;
 	case POWER_SUPPLY_PROP_REAL_CAPACITY:
