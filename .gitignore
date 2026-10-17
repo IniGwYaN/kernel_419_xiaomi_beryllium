@@ -141,3 +141,6 @@ kernel/configs/android-*.cfg
 Android.bp
 /out/
 /out-nosu/
+/out-oc/
+/out-nosu-oc/
+/out-dtb-oc/

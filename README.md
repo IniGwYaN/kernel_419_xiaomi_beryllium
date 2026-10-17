@@ -3,12 +3,17 @@
 Custom 4.19.325 kernel for the Xiaomi POCO F1, based on **Aozora 4.19** by Kaiyaa77,
 with fixes for the known "4.19 bugs" on SDM845.
 
-Two variants:
+Two root variants, each in two profiles:
 
 | Variant | Root |
 |---|---|
 | **KSUN** | KernelSU-Next + SUSFS (use the KernelSU Next manager v3.3.0) |
 | **NoSU** | no root |
+
+| Profile | GPU max | Thermal |
+|---|---|---|
+| **STD** | 710 MHz (stock) | all thermal zones on |
+| **OC** | 802 MHz | the 14 zones Aozora disables are off (SoC critical trips + LMH stay) |
 
 ## Changes on top of Aozora
 
@@ -27,7 +32,8 @@ Note: the version string shows `5.10.245` (Aozora's KERNELVERSION spoof); the re
 ```sh
 git clone --recursive <this repo>
 cd <repo>
-CLANG_DIR=/path/to/clang ./build_fsociety.sh ksun   # or: nosu
+CLANG_DIR=/path/to/clang ./build_fsociety.sh ksun              # or: nosu
+CLANG_DIR=/path/to/clang PROFILE=oc ./build_fsociety.sh ksun   # OC profile
 ```
 
 Tested with Neutron clang 24. The output is `out/arch/arm64/boot/Image.gz-dtb`
