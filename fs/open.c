@@ -464,7 +464,7 @@ extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int
 SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
 {
 #ifdef CONFIG_KSU_SUSFS
-	if (likely(susfs_is_current_proc_umounted()))
+	if (likely(susfs_is_current_proc_no_su()))
 		goto orig_flow;
 
 	if (likely(ksu_su_compat_enabled)) {
