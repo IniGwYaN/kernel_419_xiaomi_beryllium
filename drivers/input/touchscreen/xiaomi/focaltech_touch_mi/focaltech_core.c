@@ -80,6 +80,7 @@ static int fts_ts_resume(struct device *dev);
 static void fts_resume_work(struct work_struct *work);
 static void fts_suspend_work(struct work_struct *work);
 extern const char *dsi_get_display_name(void);
+extern void dsi_panel_doubleclick_enable(bool on);
 
 #if FTS_CHARGER_EN
 extern int fts_charger_mode_set(struct i2c_client *client, bool on);
@@ -1592,14 +1593,34 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 	int *blank;
 	struct fts_ts_data *fts_data = container_of(self, struct fts_ts_data, fb_notif);
 
-	if (evdata && evdata->data && event == DRM_EVENT_BLANK && fts_data && fts_data->client) {
-		blank = evdata->data;
-		flush_workqueue(fts_data->event_wq);
+	static bool panel_kept_on;
 
-		if (*blank == DRM_BLANK_UNBLANK)
-			queue_work(fts_data->event_wq, &fts_data->resume_work);
-		else if (*blank == DRM_BLANK_POWERDOWN)
-			queue_work(fts_data->event_wq, &fts_data->suspend_work);
+	if (!(evdata && evdata->data && fts_data && fts_data->client))
+		return 0;
+	blank = evdata->data;
+
+	/*
+	 * Suspend on the EARLY event, while the in-cell panel still powers the
+	 * touch IC: at DRM_EVENT_BLANK the panel is already off, every i2c
+	 * write NACKs (-107) and gesture (double tap) mode is never entered.
+	 * With gesture on, keep panel reset/regulators up like nt36xxx does.
+	 */
+	if (event == DRM_EARLY_EVENT_BLANK && *blank == DRM_BLANK_POWERDOWN) {
+		flush_workqueue(fts_data->event_wq);
+#if FTS_GESTURE_EN
+		if (fts_gesture_enabled()) {
+			dsi_panel_doubleclick_enable(true);
+			panel_kept_on = true;
+		}
+#endif
+		fts_ts_suspend(&fts_data->client->dev);
+	} else if (event == DRM_EVENT_BLANK && *blank == DRM_BLANK_UNBLANK) {
+		if (panel_kept_on) {
+			dsi_panel_doubleclick_enable(false);
+			panel_kept_on = false;
+		}
+		flush_workqueue(fts_data->event_wq);
+		queue_work(fts_data->event_wq, &fts_data->resume_work);
 	}
 
 	return 0;

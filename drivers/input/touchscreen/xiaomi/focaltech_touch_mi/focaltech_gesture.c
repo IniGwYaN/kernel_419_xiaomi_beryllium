@@ -476,6 +476,11 @@ void fts_gesture_recovery(struct i2c_client *client)
 	}
 }
 
+bool fts_gesture_enabled(void)
+{
+	return fts_gesture_data.mode == ENABLE;
+}
+
 /*****************************************************************************
 *   Name: fts_gesture_suspend
 *  Brief:

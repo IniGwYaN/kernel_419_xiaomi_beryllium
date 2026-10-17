@@ -232,6 +232,7 @@ void fts_gesture_recovery(struct i2c_client *client);
 int fts_gesture_readdata(struct fts_ts_data *ts_data);
 int fts_gesture_suspend(struct i2c_client *i2c_client);
 int fts_gesture_resume(struct i2c_client *client);
+bool fts_gesture_enabled(void);
 #endif
 
 /* Apk and functions */
