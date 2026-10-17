@@ -909,7 +909,6 @@ ifdef CONFIG_LTO_CLANG
 ifdef CONFIG_THINLTO
 lto-clang-flags	:= -flto=thin $(call cc-option,-fsplit-lto-unit)
 KBUILD_LDFLAGS	+= --thinlto-cache-dir=.thinlto-cache --thinlto-jobs=$(nproc --all)
-KBUILD_LDFLAGS	+= $(call ld-option,--lto-whole-program-visibility -mllvm -always-rename-promoted-locals=false)
 else
 lto-clang-flags	:= -flto
 endif
