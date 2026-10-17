@@ -14,8 +14,10 @@ M="make -C $S -j$(nproc) O=$O ARCH=arm64 SUBARCH=arm64 LLVM=1 LLVM_IAS=1 CC=clan
 export KCFLAGS="-Wno-error"
 $M beryllium_defconfig
 if [ $VARIANT = ksun ]; then
-  # KSU_SUSFS_TRY_UMOUNT off: SUSFS v2.2.0 dropped susfs_add_try_umount that KernelSU-Next legacy-susfs-v2 still calls
-  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-fsociety" -e KSU -e KSU_MANUAL_HOOK -e KSU_SUSFS -d KSU_SUSFS_TRY_UMOUNT
+  # KernelSU-Next legacy 3.4.2 (UAPI 5) + SUSFS 2.3.0, every SUSFS feature on
+  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-fsociety" -e KSU -e KSU_MANUAL_HOOK -e KSU_SUSFS \
+    -e KSU_SUSFS_SUS_PATH -e KSU_SUSFS_SUS_MOUNT -e KSU_SUSFS_SUS_KSTAT -e KSU_SUSFS_SPOOF_UNAME -e KSU_SUSFS_ENABLE_LOG \
+    -e KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS -e KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG -e KSU_SUSFS_OPEN_REDIRECT -e KSU_SUSFS_SUS_MAP
 else
   "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-fsociety-nosu" -d KSU -d KSU_SUSFS
 fi
