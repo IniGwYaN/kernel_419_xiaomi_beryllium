@@ -2166,6 +2166,7 @@ static bool pwrlevel_uses_ib(struct msm_bus_scale_pdata *bus_scale_table,
 int kgsl_pwrctrl_init(struct kgsl_device *device)
 {
 	int i, k, m, n = 0, result, freq;
+	u32 max_freq;
 	struct platform_device *pdev = device->pdev;
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct device_node *gpu_cfg_node;
@@ -2201,6 +2202,12 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	pwr->min_pwrlevel = pwr->num_pwrlevels - 2;
 	pwr->thermal_pwrlevel = 0;
 	pwr->thermal_pwrlevel_floor = pwr->min_pwrlevel;
+
+	/* fsociety: the standard dtb caps the GPU at stock 710 MHz; the OC dtb leaves this out (802 MHz) */
+	if (!of_property_read_u32(pdev->dev.of_node, "qcom,fsociety-max-freq", &max_freq))
+		while (pwr->max_pwrlevel < pwr->min_pwrlevel &&
+		       pwr->pwrlevels[pwr->max_pwrlevel].gpu_freq > max_freq)
+			pwr->max_pwrlevel++;
 
 	pwr->wakeup_maxpwrlevel = 0;
 

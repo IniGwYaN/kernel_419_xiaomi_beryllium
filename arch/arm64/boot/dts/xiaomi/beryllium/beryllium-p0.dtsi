@@ -433,3 +433,73 @@
 		qcom,firmware-name = "slpi_br";
 	};
 };
+
+/*
+ * fsociety profiles (build with FSOCIETY_DTC_CPP_FLAGS=-DFSOCIETY_OC for OC):
+ * standard = all thermal zones on, GPU capped at stock 710 MHz;
+ * OC = GPU up to 802 MHz and the thermal zones Aozora disables turned off.
+ * SoC critical trips and LMH stay active in both.
+ */
+#ifdef FSOCIETY_OC
+&thermal_zones {
+	aoss0-usr {
+		disable-thermal-zone;
+	};
+
+	aoss1-usr {
+		disable-thermal-zone;
+	};
+
+	camera-usr {
+		disable-thermal-zone;
+	};
+
+	compute-hvx-usr {
+		disable-thermal-zone;
+	};
+
+	ddr-usr {
+		disable-thermal-zone;
+	};
+
+	gold-virt-max-step {
+		disable-thermal-zone;
+	};
+
+	gpu-virt-max-step {
+		disable-thermal-zone;
+	};
+
+	kryo-l3-0-usr {
+		disable-thermal-zone;
+	};
+
+	kryo-l3-1-usr {
+		disable-thermal-zone;
+	};
+
+	mdm-core-usr {
+		disable-thermal-zone;
+	};
+
+	mdm-dsp-usr {
+		disable-thermal-zone;
+	};
+
+	mmss-usr {
+		disable-thermal-zone;
+	};
+
+	silv-virt-max-step {
+		disable-thermal-zone;
+	};
+
+	wlan-usr {
+		disable-thermal-zone;
+	};
+};
+#else
+&msm_gpu {
+	qcom,fsociety-max-freq = <710000000>;
+};
+#endif
