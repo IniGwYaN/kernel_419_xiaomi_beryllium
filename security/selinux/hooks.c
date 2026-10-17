@@ -104,10 +104,10 @@
 #include "avc_ss.h"
 
 struct selinux_state selinux_state;
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 extern struct selinux_state fake_state;
 extern bool ksu_selinux_hide_running __read_mostly;
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 
 /* SECMARK reference count */
 static atomic_t selinux_secmark_refcount = ATOMIC_INIT(0);
@@ -6453,7 +6453,7 @@ abort_change:
 	return error;
 }
 
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 static int my_setprocattr(const char *name, void *value, size_t size)
 {
 	u32 mysid = current_sid(), sid = 0;
@@ -6488,7 +6488,7 @@ static int my_setprocattr(const char *name, void *value, size_t size)
 
 	return selinux_setprocattr(name, value, size);
 }
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 
 static int selinux_ismaclabel(const char *name)
 {
@@ -7037,11 +7037,11 @@ static struct security_hook_list selinux_hooks[] __lsm_ro_after_init = {
 	LSM_HOOK_INIT(d_instantiate, selinux_d_instantiate),
 
 	LSM_HOOK_INIT(getprocattr, selinux_getprocattr),
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 	LSM_HOOK_INIT(setprocattr, my_setprocattr),
 #else
 	LSM_HOOK_INIT(setprocattr, selinux_setprocattr),
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 
 	LSM_HOOK_INIT(ismaclabel, selinux_ismaclabel),
 	LSM_HOOK_INIT(secctx_to_secid, selinux_secctx_to_secid),

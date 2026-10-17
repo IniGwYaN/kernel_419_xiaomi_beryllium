@@ -33,7 +33,7 @@
 #include <linux/kobject.h>
 #include <linux/ctype.h>
 
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 #include "ss/services.h"
 #endif
 
@@ -47,14 +47,14 @@
 #include "objsec.h"
 #include "conditional.h"
 
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 extern struct selinux_state fake_state;
 extern struct page *fake_status;
 extern struct static_key_false fake_status_initialize_key;
 extern bool ksu_selinux_hide_running __read_mostly;
 extern bool ksu_selinux_hide_enabled __read_mostly;
 extern void initialize_fake_status(void);
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 
 enum sel_inos {
 	SEL_ROOT_INO = 2,
@@ -244,7 +244,7 @@ static int sel_open_handle_status(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 static int my_sel_open_handle_status(struct inode *inode, struct file *filp)
 {
 	void *data;
@@ -265,7 +265,7 @@ static int my_sel_open_handle_status(struct inode *inode, struct file *filp)
 		initialize_fake_status();
 	return ret;
 }
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 
 static ssize_t sel_read_handle_status(struct file *filp, char __user *buf,
 				      size_t count, loff_t *ppos)
@@ -302,11 +302,11 @@ static int sel_mmap_handle_status(struct file *filp,
 }
 
 static const struct file_operations sel_handle_status_ops = {
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 	.open		= my_sel_open_handle_status,
 #else
 	.open		= sel_open_handle_status,
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 	.read		= sel_read_handle_status,
 	.mmap		= sel_mmap_handle_status,
 	.llseek		= generic_file_llseek,
@@ -676,7 +676,7 @@ out:
 	return length;
 }
 
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 static ssize_t my_write_context(struct file *file, char *buf, size_t size)
 {
 	char *canon = NULL;
@@ -714,7 +714,7 @@ out:
 	kfree(canon);
 	return length;
 }
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 
 static ssize_t sel_read_checkreqprot(struct file *filp, char __user *buf,
 				     size_t count, loff_t *ppos)
@@ -856,26 +856,26 @@ static ssize_t sel_write_create(struct file *file, char *buf, size_t size);
 static ssize_t sel_write_relabel(struct file *file, char *buf, size_t size);
 static ssize_t sel_write_user(struct file *file, char *buf, size_t size);
 static ssize_t sel_write_member(struct file *file, char *buf, size_t size);
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 static ssize_t my_write_access(struct file *file, char *buf, size_t size);
 static ssize_t my_write_context(struct file *file, char *buf, size_t size);
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 
 static ssize_t (*const write_op[])(struct file *, char *, size_t) = {
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 	[SEL_ACCESS] = my_write_access,
 #else
 	[SEL_ACCESS] = sel_write_access,
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 	[SEL_CREATE] = sel_write_create,
 	[SEL_RELABEL] = sel_write_relabel,
 	[SEL_USER] = sel_write_user,
 	[SEL_MEMBER] = sel_write_member,
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 	[SEL_CONTEXT] = my_write_context,
 #else
 	[SEL_CONTEXT] = sel_write_context,
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 };
 
 static ssize_t selinux_transaction_write(struct file *file, const char __user *buf, size_t size, loff_t *pos)
@@ -963,7 +963,7 @@ out:
 	return length;
 }
 
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 static ssize_t my_write_access(struct file *file, char *buf, size_t size)
 {
 	char *scon = NULL, *tcon = NULL;
@@ -1016,7 +1016,7 @@ out:
 	kfree(scon);
 	return length;
 }
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif // #ifdef CONFIG_FSOCIETY_RESUKISU_SELINUX_HIDE
 
 static ssize_t sel_write_create(struct file *file, char *buf, size_t size)
 {
