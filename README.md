@@ -7,7 +7,7 @@ Two root variants, each in two profiles:
 
 | Variant | Root |
 |---|---|
-| **KSUN** | KernelSU-Next + SUSFS (use the KernelSU Next manager v3.3.0) |
+| **KSUN** | KernelSU-Next 3.4.2 legacy (UAPI 5) + SUSFS 2.3.0 — use the KernelSU Next manager **v3.4.2** (normal or spoofed) |
 | **NoSU** | no root |
 
 | Profile | GPU max | Thermal |
@@ -23,7 +23,20 @@ Two root variants, each in two profiles:
   (ThinLTO then mixed up same-named static symbols, kernel panic at boot).
 - **Thermal zones kept:** `beryllium-p0.dtsi` from Kyzuna (Aozora disables many of them).
 - **Charger:** unknown APSD result gets 500 mA instead of 0 mA.
-- **KernelSU-Next** (kyzuna28 `legacy-susfs-v2`, submodule) with the SUSFS inline hooks adapted.
+- **Android 17 apps:** `CAP_CHECKPOINT_RESTORE` (cap 40) backported. A17's Rust native app zygote
+  aborts when the cap bounding set stops at 39 (Chrome/Brave force close).
+- **Namespaces/cgroups:** PID/IPC namespaces, SysV IPC, POSIX mqueue, pids/devices/net_prio cgroups on.
+- **Double tap to wake (FocalTech panels):** the touch driver now enters gesture mode on the early
+  blank event, before the in-cell panel powers off, and keeps the panel up like the Novatek driver.
+  Before, every screen-off ended in i2c NACKs and DT2W never worked.
+- **Battery:** the capacity read never fails any more (healthd turns a failed read into 0 % and
+  Android powers off: "dies with charge left"); the charger/FG awake votes hold real wakelocks again
+  instead of 500 ms timeouts; every cycle-count bucket is cleared in SRAM.
+- **QC2 thermal table:** level 10 was 10.255 A (Xiaomi typo), now 1.025 A.
+- **Per-app battery stats:** `CONFIG_PROFILING` so `/proc/uid_cputime` and `/proc/uid_io` exist.
+- **KernelSU-Next** (official `legacy` branch, submodule, + SUSFS glue) with SUSFS 2.3.0:
+  hides sus mounts from A17 `zygote_next` children, `no_su` process flag, init.rc size hook for A17
+  (`ksu_handle_newfstat_ret`), all SUSFS features on.
 
 Note: the version string shows `5.10.245` (Aozora's KERNELVERSION spoof); the real base is 4.19.325.
 
@@ -42,9 +55,12 @@ Tested with Neutron clang 24. The output is `out/arch/arm64/boot/Image.gz-dtb`
 ## Credits
 
 - Kaiyaa77: Aozora 4.19 (base)
-- @Kyy / kyzuna28: Kyzuna 4.19 and the KernelSU-Next fork
-- KernelSU-Next team
+- @Kyy / kyzuna28: Kyzuna 4.19 (thermal/charger DT)
+- KernelSU-Next team (rifsxd and contributors)
+- star-star-dev: SUSFS glue for KernelSU-Next legacy
 - simonpunk: SUSFS
+- LineageOS (Bruno Martins): `qcom,force-warm-reboot` idea on SDM845
+- Sultan Alsawaf: FG cycle-count clear fix
 - diphons: SDM845 4.19 port
 - The Linux kernel and CodeLinaro / Qualcomm sources
 
