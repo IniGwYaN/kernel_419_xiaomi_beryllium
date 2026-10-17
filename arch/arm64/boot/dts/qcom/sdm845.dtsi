@@ -786,6 +786,9 @@
 		reg = <0xC264000 0x4>,
 		      <0x1fd3000 0x4>;
 		reg-names = "pshold-base", "tcsr-boot-misc-detect";
+		/* fsociety: warm reset via PS_HOLD on every reboot; a PMIC hard reset made some
+		 * 4.19 F1s power off instead of rebooting. */
+		qcom,force-warm-reboot;
 	};
 
 	aop-msg-client {
