@@ -5976,6 +5976,12 @@ void smblib_usb_typec_change(struct smb_charger *chg)
 		return;
 	}
 
+	/* fsociety: first-plug-after-boot debugging, CC changes are rare */
+	pr_info("PMI: typec change: TYPE_C_STATUS_1..5 = %02x %02x %02x %02x %02x\n",
+		chg->typec_status[0], chg->typec_status[1],
+		chg->typec_status[2], chg->typec_status[3],
+		chg->typec_status[4]);
+
 	smblib_handle_typec_cc_state_change(chg);
 
 	if (chg->typec_status[3] & TYPEC_VBUS_ERROR_STATUS_BIT)
