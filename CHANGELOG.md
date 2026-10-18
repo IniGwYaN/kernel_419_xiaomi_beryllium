@@ -1,0 +1,192 @@
+# fsociety kernel 4.19 — CHANGELOG
+
+POCO F1 (beryllium / SDM845). Base: **Aozora 4.19** by Kaiyaa77 (Linux
+4.19.325, CLO cip135-st19). Everything below is on top of that base.
+
+Version string reports `5.10.245-fsociety-umrsrn-v1-*` (Aozora spoofs the
+KERNELVERSION to 5.10.245; the real base is 4.19.325).
+
+Root variant: **KernelSU-Next 33219 (legacy) + SUSFS**, paired with
+**KernelSU Next manager v3.3.0**. (A KernelSU-Next 3.4.2 build is still being
+worked on — its newer su/mount path breaks app root on this GSI — and is **not**
+part of this release.)
+
+Two builds from one source: **KSU** (`CONFIG_KSU=y`) and **NonKSU** (no root).
+
+---
+
+## TEST1.0 (2026-10-19)
+
+- **Android 17 bootloop (`bpfloader-failed`)** — backport of upstream
+  772412176fb9 *"bpf: Allow rewriting to ports under ip_unprivileged_port_start"*.
+  ROMs that set `ro.bpf.kver_override` to 5.15 (e.g. Infinity-X 4.0) load netd
+  bind programs that return 3; the old verifier only allowed 0–1, netbpfload
+  failed and init rebooted. Full feature backported (flags in
+  `__inet_bind`/`__inet6_bind`, `BPF_PROG_RUN_ARRAY_FLAGS`, verifier range 0–3).
+  Reference backport: Beryllium-Labs / jiro28.
+- **Shorter `/proc/version`** — compiler/linker GitHub URLs removed from the
+  kernel banner.
+- User tests: reboot fix OK over 10–15 reboots; USB replug OK over 10–15
+  replugs (USB + MTP immediately). Battery-jump fix not tested yet.
+
+## Bug fixes — the "4.19 weird bugs" + device-found
+
+- **Reboot → warm reset** `b93d78d4d`
+  Force a warm reset via PS_HOLD on every reboot (`qcom,force-warm-reboot` on
+  the restart node). On stock 4.19 the PMIC hard reset made some F1s power off
+  completely with no charging indication until a forced restart. Origin of the
+  idea: LineageOS / Bruno Martins (SDM845).
+
+- **Battery never dies with charge left** `4e750bf47`
+  `fg_get_prop_capacity()` returned `-EBUSY` while SOC reporting wasn't ready,
+  and the Xiaomi smooth-SOC path passed that error up. healthd turns a failed
+  capacity read into 0 %, and BatteryService then powers the phone off at 0 %
+  while unplugged. Now it reports `BATT_MISS_SOC` (rc 0) like 4.9, and a
+  transient SRAM read error can't read as 0 %.
+
+- **Restore real charger/FG/USB wakelocks** `1514cf19e`
+  The Aozora base turned every awake-votable callback into
+  `pm_wakeup_event(dev, 500)`, so any vote lasting longer than 500 ms (FG
+  profile load, SRAM cycle-count / capacity-learning writes, status_change,
+  APSD / Type-C handling) lost its wakelock and the system could suspend
+  mid-operation. Restored to `pm_stay_awake()` / `__pm_stay_awake()` in
+  smb-lib.c, qpnp-fg-gen3.c, battery.c, smb5-lib.c — no other 4.19 beryllium
+  tree has the 500 ms clamp. Prime suspect behind the battery oddities and the
+  first-USB-plug miss.
+
+- **Cycle-count fully cleared in SRAM** `07c4e7143`
+  `clear_cycle_counter()` wrote `sizeof(count)/sizeof(u8 *)` = 2 bytes, so only
+  bucket 0 was zeroed in SRAM while the in-memory copy was fully cleared. Write
+  the whole 16 bytes. (Fix from Sultan Alsawaf's sdm660 tree.)
+
+- **QC2 charge thermal-mitigation typo** `1af0852a8`
+  Level 10 of `qcom,thermal-mitigation-qc2` was 10255000 µA (10.2 A) — a Xiaomi
+  source typo — leaving QC2 unthrottled at that step. Fixed to 1025000 µA.
+
+- **Double-tap-to-wake on FocalTech panels** `4da17b08d`
+  The FTS driver queued its suspend on `DRM_EVENT_BLANK`, i.e. after the in-cell
+  panel had already powered down, so every i2c write NACKed (-107), gesture mode
+  was never entered and DT2W didn't work (~250 errors per screen-off). Now it
+  suspends synchronously on `DRM_EARLY_EVENT_BLANK` and, with gesture enabled,
+  keeps panel reset/regulators up via `dsi_panel_doubleclick_enable()` like the
+  nt36xxx driver. **Not guaranteed on replaced / non-original LCDs** — see Known
+  limitations.
+
+- **Long vibrations (≥ 1 s) no longer cut short** `bfb1a141c`
+  The Xiaomi haptics branch armed the stop timer with
+  `ktime_set(40 / MSEC_PER_SEC, (time_ms % MSEC_PER_SEC) * NSEC_PER_MSEC)` — the
+  seconds field is always 0, so a 1000 ms vibration stopped at once and 1500 ms
+  became 500 ms. Use `time_ms / MSEC_PER_SEC`. The typo is in Xiaomi's source
+  and in every beryllium kernel (incl. 4.9).
+
+- **Per-app battery stats** `d6cedaae3`
+  `beryllium_defconfig` asked for `UID_SYS_STATS` but disabled its `PROFILING`
+  dependency, so `/proc/uid_cputime` and `/proc/uid_io` were missing. Enabled
+  `CONFIG_PROFILING`.
+
+## Android 16 / 17 compatibility
+
+- **CAP_CHECKPOINT_RESTORE (cap 40)** `686019085`
+  A17's Rust native-app zygote drops the cap bounding set up to cap 40; with
+  `CAP_LAST_CAP = CAP_BPF (39)` the `PR_CAPBSET_READ(40)` returns `EINVAL` and
+  the zygote aborts (Chrome/Brave force close). Backported the capability plus
+  the SELinux `capability2 checkpoint_restore` permission.
+
+- **Namespaces / cgroups** `1d32a4405`
+  Enabled PID & IPC namespaces, SysV IPC, POSIX mqueue, and the
+  pids/devices/net_prio cgroups.
+
+## Root — KernelSU-Next + SUSFS
+
+- **KernelSU-Next as the root implementation** `64a0878c5`, `15bda387f`, `79003a7b8`
+  KernelSU-Next (kyzuna28 legacy-susfs-v2) wired in as the `KernelSU` submodule;
+  SUSFS inline hooks adapted to KernelSU-Next; ReSukiSU hook names mapped to
+  KernelSU-Next bools, fstat hook handling adjusted, ReSukiSU selinux-hide
+  plumbing compiled out. Thermal zones kept (beryllium-p0.dtsi from Kyzuna,
+  which Aozora disables).
+- **seccomp filter_count** `b9dc3b283` — added, required by KernelSU-Next.
+- **Legacy GET_INFO reply fix** `075563672` — copy the reply to userspace so
+  NeoZygisk detects KernelSU.
+- **init.rc fstat size hook** `a03e684de` — restored so ksud runs at cold boot
+  on A16/A17 (init reads init.rc only up to `st_size`).
+- **.gitmodules / build script** `e1783ed61`, `bad1df4e9` — KernelSU submodule
+  pin, portable `build_fsociety.sh`, README.
+
+## Profiles & control
+
+- **Standard / OC device-tree profiles** `09679f219`, `85869b8d8`
+  Standard = all thermal zones on, GPU capped at the stock 710 MHz; OC = GPU up
+  to 802 MHz and the 14 soft zones off (SoC critical trips + LMH stay in both).
+  In the shipped builds the Gaming profile is applied at runtime by the
+  **fsociety Kernel Control** module instead of a separate OC zip.
+
+## Build / toolchain
+
+- **ThinLTO bootloop fix** `fd32a244b`
+  Dropped `-mllvm -always-rename-promoted-locals=false`; with newer clang's
+  ThinLTO it left same-named promoted statics unrenamed, so one static shadowed
+  another and the kernel panicked at boot.
+- **Version string**
+  `LOCALVERSION` = `-fsociety-umrsrn-v1-KSU` / `-NonKSU` so the KSU and non-KSU
+  builds are distinguishable in Settings → About phone.
+- **Type-C status logging** `1094257fc`
+  Log the 5 Type-C status bytes on every CC change, to diagnose the rare
+  first-USB-plug-after-boot miss.
+
+## Known limitations
+
+- **Double-tap-to-wake** is reliable only with **Always-On Display on**. The
+  in-kernel fix arms gesture mode before the panel powers off, but on a replaced
+  / **non-original LCD** the touch IC can drop the i2c link once the screen is
+  fully off, so a tap isn't always read — **can't be guaranteed**. Keep AOD on
+  (gesture mode stays powered) or use lift-to-wake.
+- **First USB plug after a cold boot** can rarely miss; re-plug works (Type-C
+  status is now logged for diagnosis).
+
+---
+
+## Full commit list
+
+```
+1094257fc  smb-lib: log the Type-C status bytes on every CC change
+bfb1a141c  leds: qpnp-haptics: fix the Xiaomi stop timer for plays >= 1 s
+07c4e7143  power: qpnp-fg-gen3: clear every cycle-count bucket in SRAM
+1514cf19e  power: qcom: restore real awake votes (drop 500 ms wakelock timeouts)
+d6cedaae3  defconfig: enable PROFILING so UID_SYS_STATS builds
+1af0852a8  arm64: dts: beryllium: fix qc2 thermal mitigation typo
+4e750bf47  power: qpnp-fg-gen3: never fail capacity reads
+4da17b08d  touchscreen: focaltech_mi: suspend on early blank, keep panel up for DT2W
+85869b8d8  build_fsociety.sh/README: PROFILE=std|oc
+09679f219  fsociety: standard / OC profiles
+a03e684de  fs/stat: restore the init.rc fstat hook for KernelSU-Next
+075563672  KernelSU: fix legacy GET_INFO reply (NeoZygisk root detection)
+686019085  capabilities: add CAP_CHECKPOINT_RESTORE (40)
+1d32a4405  defconfig: enable PID/IPC namespaces, SysV IPC, POSIX mqueue, cgroups
+bad1df4e9  fsociety: README
+e1783ed61  fsociety: KernelSU submodule (.gitmodules), build_fsociety.sh
+b9dc3b283  seccomp: add filter_count (needed by KernelSU-Next)
+fd32a244b  Makefile: drop -always-rename-promoted-locals=false (ThinLTO bootloop)
+b93d78d4d  fsociety: force warm reboot (PS_HOLD) - fixes reboot -> power off
+79003a7b8  fsociety: map ReSukiSU hooks to KernelSU-Next
+64a0878c5  fsociety: KernelSU-Next (kyzuna28 legacy-susfs-v2) as KernelSU
+15bda387f  fsociety: adapt SUSFS inline hooks to KernelSU-Next; keep thermal zones
+---------  (base: Aozora 4.19 by Kaiyaa77)
+```
+
+## Base (inherited from Aozora 4.19 v1.0 — credit @Kaiyaa77Ar)
+
+MGLRU (`LRU_GEN`) · NtSync · WALT scheduler · Maple I/O scheduler (default) ·
+zram + LZ4 · Boeffla WL blocker · SUSFS 2.2.0 · KernelSU-Next · Neutron Clang 24
+(ThinLTO + CFI). These ship in the Aozora v1.0 base, not fsociety's own work.
+
+## Credits
+
+@Kaiyaa77Ar (Kaiyaa77) — Aozora 4.19 base · @kyzuna28 (Kyy) — Kyzuna 4.19 dtsi &
+KernelSU-Next legacy fork · KernelSU-Next team (rifsxd, tiann, Mr-Morat) ·
+simonpunk — SUSFS · diphons — SDM845 4.19 port · LineageOS / Bruno Martins —
+force-warm-reboot idea · Sultan Alsawaf — cycle-count clear fix ·
+Stanislav Fomichev — upstream BPF bind patch · Beryllium-Labs / jiro28 — 4.19
+backport reference · the Linux kernel & CodeLinaro / Qualcomm sources · the
+POCO F1 / SDM845 community.
+
+Licensed under GPL-2.0.
