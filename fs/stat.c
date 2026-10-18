@@ -419,7 +419,7 @@ SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
 }
 #endif
 
-#ifdef CONFIG_KSU
+#ifdef CONFIG_KSU_MANUAL_HOOK
 extern bool ksu_init_rc_hook;
 extern void ksu_handle_newfstat_ret(unsigned int *fd, struct stat __user **statbuf_ptr);
 #endif
@@ -431,7 +431,7 @@ SYSCALL_DEFINE2(newfstat, unsigned int, fd, struct stat __user *, statbuf)
 
 	if (!error)
 		error = cp_new_stat(&stat, statbuf);
-#ifdef CONFIG_KSU
+#ifdef CONFIG_KSU_MANUAL_HOOK
 	/* A17 init reads init.rc only up to st_size: grow it by the ksu rc */
 	if (!error && unlikely(ksu_init_rc_hook))
 		ksu_handle_newfstat_ret(&fd, &statbuf);
