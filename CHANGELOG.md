@@ -19,7 +19,7 @@ Two builds from one source: **KSU** (`CONFIG_KSU=y`) and **NonKSU** (no root).
 
 - **Android 17 bootloop (`bpfloader-failed`)** — backport of upstream
   772412176fb9 *"bpf: Allow rewriting to ports under ip_unprivileged_port_start"*.
-  ROMs that set `ro.bpf.kver_override` to 5.15 (e.g. Infinity-X 4.0) load netd
+  ROMs that set `ro.bpf.kver_override` to 5.15 load netd
   bind programs that return 3; the old verifier only allowed 0–1, netbpfload
   failed and init rebooted. Full feature backported (flags in
   `__inet_bind`/`__inet6_bind`, `BPF_PROG_RUN_ARRAY_FLAGS`, verifier range 0–3).

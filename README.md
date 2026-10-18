@@ -16,7 +16,6 @@ Profiles: **STD** (GPU 710 MHz, thermal on) · **OC** (GPU 802 MHz, relaxed ther
 - **Phone powers off on reboot.** Fixed with a warm reboot (tested 10–15 reboots).
 - **USB not detected after replugging.** Fixed (tested 10–15 replugs, USB + MTP show up right away).
 - **Battery drops or shuts off with charge left.** Fuel-gauge fix included, not tested yet.
-- **Android 17 bootloop (`bpfloader-failed`)** on ROMs like Infinity-X 4.0. Fixed.
 - **Chrome/Brave crash on Android 17.** Fixed.
 - **Double-tap-to-wake** on FocalTech panels (original LCD).
 - KernelSU-Next + SUSFS fixes (Zygisk detection, modules at cold boot).
