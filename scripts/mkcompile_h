@@ -5,7 +5,8 @@ TARGET=$1
 ARCH=$2
 SMP=$3
 PREEMPT=$4
-CC_VERSION="$5"
+# drop "(https://...git <hash>)" from the compiler/linker banners (Neutron/AOSP clang add them) to keep /proc/version short
+CC_VERSION=$(echo "$5" | sed 's/ *([^)]*:\/\/[^)]*)//g')
 LD=$6
 
 vecho() { [ "${quiet}" = "silent_" ] || echo "$@" ; }
@@ -74,7 +75,7 @@ UTS_TRUNCATE="cut -b -$UTS_LEN"
   echo \#define LINUX_COMPILE_HOST \"`echo $LINUX_COMPILE_HOST | $UTS_TRUNCATE`\"
 
   LD_VERSION=$($LD -v | head -n1 | sed 's/(compatible with [^)]*)//' \
-		      | sed 's/[[:space:]]*$//')
+		      | sed 's/ *([^)]*:\/\/[^)]*)//g' | sed 's/[[:space:]]*$//')
   printf '#define LINUX_COMPILER "%s"\n' "$CC_VERSION, $LD_VERSION"
 ) > .tmpcompile
 
