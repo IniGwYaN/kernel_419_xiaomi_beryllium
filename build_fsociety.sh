@@ -15,11 +15,11 @@ export KCFLAGS="-Wno-error"
 $M beryllium_defconfig
 if [ $VARIANT = ksun ]; then
   # KernelSU-Next legacy 3.4.2 (UAPI 5) + SUSFS 2.3.0, every SUSFS feature on
-  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-fsociety" -e KSU -e KSU_MANUAL_HOOK -e KSU_SUSFS \
+  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-fsociety-umrsrn-v1-KSU" -e KSU -e KSU_MANUAL_HOOK -e KSU_SUSFS \
     -e KSU_SUSFS_SUS_PATH -e KSU_SUSFS_SUS_MOUNT -e KSU_SUSFS_SUS_KSTAT -e KSU_SUSFS_SPOOF_UNAME -e KSU_SUSFS_ENABLE_LOG \
     -e KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS -e KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG -e KSU_SUSFS_OPEN_REDIRECT -e KSU_SUSFS_SUS_MAP
 else
-  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-fsociety-nosu" -d KSU -d KSU_SUSFS
+  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-fsociety-umrsrn-v1-NonKSU" -d KSU -d KSU_SUSFS
 fi
 $M olddefconfig
 $M
