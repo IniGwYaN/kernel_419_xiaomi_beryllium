@@ -1,19 +1,74 @@
+fsociety kernel 4.19 for POCO F1 (beryllium)
+============================================
+
+  Custom Linux 4.19.325 kernel for the Xiaomi POCO F1 (SDM845),
+  based on Aozora 4.19 by Kaiyaa77.
+
+Builds
+------
+
+  KSU    KernelSU-Next 33219 + SUSFS (KernelSU Next manager v3.3.0)
+  NoSU   no root
+
+  Profiles   STD   GPU 710 MHz, thermal on
+             OC    GPU 802 MHz, relaxed thermal
+
+4.19 bug fixes
+--------------
+
+ - Phone powers off on reboot: warm reboot. Tested 10-15 reboots.
+ - USB not detected after replugging: fixed. Tested 10-15 replugs,
+   USB and MTP show up right away.
+ - Battery drops or shuts off with charge left: fuel-gauge fix
+   included, not tested yet.
+ - Battery cycle count not fully cleared: fixed.
+
+Other fixes
+-----------
+
+ - Chrome/Brave crash on Android 17: CAP_CHECKPOINT_RESTORE backport.
+ - Bootloop with newer clang: removed an LTO flag from the Aozora
+   Makefile that crashed the kernel at boot.
+ - Vibrations of 1 s or longer did nothing: haptics timer typo
+   (present in every beryllium kernel).
+ - QC2 charging thermal typo: 10.2 A corrected to 1.025 A.
+ - Double-tap-to-wake on FocalTech panels: fixed the screen suspend
+   order (original LCD).
+ - KernelSU-Next + SUSFS: Zygisk detection and modules at cold boot.
+
+Extras
+------
+
+ - STD / OC profiles (GPU 710 / 802 MHz and thermal settings).
+ - fsociety-control module (WebUI: Standard / Gaming).
+ - Clean installer screen, short kernel version text, two builds
+   (KSU and NoSU).
+
+Notes
+-----
+
+ - For 4.19 ROMs only (not 4.9).
+ - The version shows 5.10.245 (Aozora's spoof); the real base is
+   4.19.325.
+ - Full details: see CHANGELOG.md.
+
+Credits
+-------
+
+  Kaiyaa77 (@Kaiyaa77Ar)      Aozora 4.19 base
+  Kyy (@kyzuna28)             Kyzuna dtsi, KernelSU-Next fork
+  KernelSU-Next team
+  simonpunk                   SUSFS
+  diphons                     SDM845 4.19 port
+  LineageOS / Bruno Martins   warm reboot
+  Sultan Alsawaf              cycle-count fix
+  Stanislav Fomichev          upstream BPF bind patch
+  Beryllium-Labs / jiro28     4.19 backport reference
+
+  License: GPL-2.0. Built by UMRSRN (@umrsrn1318).
+
 Linux kernel
-============
+------------
 
-There are several guides for kernel developers and users. These guides can
-be rendered in a number of formats, like HTML and PDF. Please read
-Documentation/admin-guide/README.rst first.
-
-In order to build the documentation, use ``make htmldocs`` or
-``make pdfdocs``.  The formatted documentation can also be read online at:
-
-    https://www.kernel.org/doc/html/latest/
-
-There are various text files in the Documentation/ subdirectory,
-several of them using the Restructured Text markup notation.
-See Documentation/00-INDEX for a list of what is contained in each file.
-
-Please read the Documentation/process/changes.rst file, as it contains the
-requirements for building and running the kernel, and information about
-the problems which may result by upgrading your kernel.
+  Kernel documentation: Documentation/admin-guide/README.rst,
+  online at https://www.kernel.org/doc/html/latest/
