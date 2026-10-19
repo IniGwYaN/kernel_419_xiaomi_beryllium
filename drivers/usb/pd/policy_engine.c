@@ -2205,6 +2205,14 @@ static int usbpd_startup_common(struct usbpd *pd,
 	return 0;
 }
 
+/*
+ * fsociety: 4.9 kernels never raised Rp on attach. Raising it to 1.5A can
+ * turn a slightly leaky CC pin into an endless sink attach/detach loop.
+ * Off by default; set to 1 to get the old 4.19 behaviour back.
+ */
+static bool src_rp_1p5a;
+module_param(src_rp_1p5a, bool, 0644);
+
 static void enter_state_src_startup(struct usbpd *pd)
 {
 	struct pd_phy_params phy_params = {
@@ -2233,9 +2241,11 @@ static void enter_state_src_startup(struct usbpd *pd)
 				&pd->partner_desc);
 	}
 
-	val.intval = 1; /* Rp-1.5A; SinkTxNG for PD 3.0 */
-	power_supply_set_property(pd->usb_psy,
-			POWER_SUPPLY_PROP_TYPEC_SRC_RP, &val);
+	if (src_rp_1p5a) {
+		val.intval = 1; /* Rp-1.5A; SinkTxNG for PD 3.0 */
+		power_supply_set_property(pd->usb_psy,
+				POWER_SUPPLY_PROP_TYPEC_SRC_RP, &val);
+	}
 
 	/* Set CC back to DRP toggle for the next disconnect */
 	val.intval = POWER_SUPPLY_TYPEC_PR_DUAL;

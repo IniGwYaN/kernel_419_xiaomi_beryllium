@@ -5968,6 +5968,7 @@ static void smblib_dc_input_current_work(struct work_struct *work)
 void smblib_usb_typec_change(struct smb_charger *chg)
 {
 	int rc;
+	u8 cfg2 = 0;
 
 	rc = smblib_multibyte_read(chg, TYPE_C_STATUS_1_REG,
 							chg->typec_status, 5);
@@ -5977,10 +5978,11 @@ void smblib_usb_typec_change(struct smb_charger *chg)
 	}
 
 	/* fsociety: first-plug-after-boot debugging, CC changes are rare */
-	pr_info("PMI: typec change: TYPE_C_STATUS_1..5 = %02x %02x %02x %02x %02x\n",
+	smblib_read(chg, TYPE_C_CFG_2_REG, &cfg2);
+	pr_info("PMI: typec change: TYPE_C_STATUS_1..5 = %02x %02x %02x %02x %02x CFG_2 = %02x\n",
 		chg->typec_status[0], chg->typec_status[1],
 		chg->typec_status[2], chg->typec_status[3],
-		chg->typec_status[4]);
+		chg->typec_status[4], cfg2);
 
 	smblib_handle_typec_cc_state_change(chg);
 
