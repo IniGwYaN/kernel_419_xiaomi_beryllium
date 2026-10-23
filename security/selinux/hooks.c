@@ -2084,9 +2084,12 @@ static int selinux_ptrace_access_check(struct task_struct *child,
 
 static int selinux_ptrace_traceme(struct task_struct *parent)
 {
-	return avc_has_perm(&selinux_state,
-			    task_sid(parent), current_sid(), SECCLASS_PROCESS,
-			    PROCESS__PTRACE, NULL);
+	struct av_decision avd;
+
+	/* fsociety: AVC_STRICT = enforced even in permissive mode (see commit message) */
+	return avc_has_perm_noaudit(&selinux_state,
+				    task_sid(parent), current_sid(), SECCLASS_PROCESS,
+				    PROCESS__PTRACE, AVC_STRICT, &avd);
 }
 
 static int selinux_capget(struct task_struct *target, kernel_cap_t *effective,
