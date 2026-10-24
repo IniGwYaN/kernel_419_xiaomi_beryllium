@@ -16,6 +16,10 @@
 #include <linux/syscalls.h>
 #include <linux/syscore_ops.h>
 #include <linux/uaccess.h>
+#include <linux/moduleparam.h>
+#include <linux/sched/debug.h>
+#include <linux/string.h>
+#include <linux/timer.h>
 
 /*
  * this indicates whether you can reboot with ctrl-alt-del: the default is yes
@@ -65,6 +69,43 @@ void emergency_restart(void)
 	machine_emergency_restart();
 }
 EXPORT_SYMBOL_GPL(emergency_restart);
+
+/*
+ * fsociety: some beryllium units go black on "reboot" and stay dead (no charging LED) until a long power-key press.
+ * The apps watchdog keeps being petted while a reboot notifier or a driver's ->shutdown() waits forever, so nothing
+ * resets the SoC. Give restart/power-off reboot_guard seconds (0 = off), then dump the stuck caller + D-state tasks
+ * to the console (kept in pstore across the warm reset) and finish the restart/power-off without the stuck code.
+ */
+static unsigned int reboot_guard = 20;
+core_param(reboot_guard, reboot_guard, uint, 0644);
+static struct task_struct *reboot_guard_task;
+static enum system_states reboot_guard_state;
+static char reboot_guard_cmd[64];
+
+static void reboot_guard_fire(struct timer_list *t)
+{
+	pr_emerg("fsociety: %s stuck for %us, caller and blocked tasks:\n",
+		 reboot_guard_state == SYSTEM_RESTART ? "restart" : "power-off", reboot_guard);
+	if (reboot_guard_task)
+		sched_show_task(reboot_guard_task);
+	show_state_filter(TASK_UNINTERRUPTIBLE);
+	kmsg_dump(KMSG_DUMP_EMERG);
+	if (reboot_guard_state == SYSTEM_RESTART)
+		machine_restart(reboot_guard_cmd[0] ? reboot_guard_cmd : NULL);
+	else
+		machine_power_off();
+}
+static DEFINE_TIMER(reboot_guard_timer, reboot_guard_fire);
+
+static void reboot_guard_arm(enum system_states state, char *cmd)
+{
+	if (!reboot_guard)
+		return;
+	reboot_guard_state = state;
+	strlcpy(reboot_guard_cmd, cmd ? cmd : "", sizeof(reboot_guard_cmd));
+	reboot_guard_task = current;
+	mod_timer(&reboot_guard_timer, jiffies + reboot_guard * HZ);
+}
 
 void kernel_restart_prepare(char *cmd)
 {
@@ -241,6 +282,7 @@ void migrate_to_reboot_cpu(void)
  */
 void kernel_restart(char *cmd)
 {
+	reboot_guard_arm(SYSTEM_RESTART, cmd);
 	kernel_restart_prepare(cmd);
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
@@ -284,6 +326,7 @@ EXPORT_SYMBOL_GPL(kernel_halt);
  */
 void kernel_power_off(void)
 {
+	reboot_guard_arm(SYSTEM_POWER_OFF, NULL);
 	kernel_shutdown_prepare(SYSTEM_POWER_OFF);
 	if (pm_power_off_prepare)
 		pm_power_off_prepare();

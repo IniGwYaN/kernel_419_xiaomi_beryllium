@@ -3646,13 +3646,12 @@ void device_shutdown(void)
 				dev_info(dev, "shutdown_pre\n");
 			dev->class->shutdown_pre(dev);
 		}
+		/* fsociety: always named, so a ->shutdown() that hangs a reboot is the last line in pstore */
 		if (dev->bus && dev->bus->shutdown) {
-			if (initcall_debug)
-				dev_info(dev, "shutdown\n");
+			dev_info(dev, "shutdown\n");
 			dev->bus->shutdown(dev);
 		} else if (dev->driver && dev->driver->shutdown) {
-			if (initcall_debug)
-				dev_info(dev, "shutdown\n");
+			dev_info(dev, "shutdown\n");
 			dev->driver->shutdown(dev);
 		}
 
