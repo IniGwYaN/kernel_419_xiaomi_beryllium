@@ -1738,6 +1738,12 @@ extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *ar
 			void *envp, int *flags);
 extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr, void *argv,
 				void *envp, int *flags);
+#elif defined(CONFIG_KSU_MANUAL_HOOK)
+extern bool ksu_execveat_hook __read_mostly;
+extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
+			void *envp, int *flags);
+extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr, void *argv,
+				void *envp, int *flags);
 #endif
 
 /*
@@ -1768,6 +1774,11 @@ static int __do_execve_file(int fd, struct filename *filename,
 	}
 
 orig_flow:
+#elif defined(CONFIG_KSU_MANUAL_HOOK)
+	if (unlikely(ksu_execveat_hook))
+		ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
+	else
+		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
 #endif
 
 	/*

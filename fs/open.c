@@ -459,6 +459,9 @@ extern bool ksu_su_compat_enabled;
 extern bool __ksu_is_allow_uid_for_current(uid_t uid);
 extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 			int *flags);
+#elif defined(CONFIG_KSU_MANUAL_HOOK)
+extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
+			int *flags);
 #endif
 
 SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
@@ -473,6 +476,8 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
 	}
 
 orig_flow:
+#elif defined(CONFIG_KSU_MANUAL_HOOK)
+	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
 #endif
 
 	return do_faccessat(dfd, filename, mode);
