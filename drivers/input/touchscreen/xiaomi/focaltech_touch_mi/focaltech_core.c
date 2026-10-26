@@ -951,6 +951,25 @@ static irqreturn_t fts_ts_interrupt(int irq, void *data)
 			}
 	}
 
+#if FTS_GESTURE_EN
+	if (ts_data->suspended) {
+		if (0 == fts_gesture_readdata(ts_data)) {
+			FTS_INFO("succuss to get gesture data in irq handler");
+		}
+#if FTS_ESDCHECK_EN
+		fts_esdcheck_set_intr(0);
+#endif
+		return IRQ_HANDLED;
+	}
+#else
+	if (ts_data->suspended) {
+#if FTS_ESDCHECK_EN
+		fts_esdcheck_set_intr(0);
+#endif
+		return IRQ_HANDLED;
+	}
+#endif
+
 	ret = fts_read_touchdata(ts_data);
 	if (ret == 0) {
 		mutex_lock(&ts_data->report_mutex);
