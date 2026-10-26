@@ -1744,6 +1744,9 @@ extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *ar
 			void *envp, int *flags);
 extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr, void *argv,
 				void *envp, int *flags);
+#elif defined(CONFIG_KSU) /* backslashxx/KernelSU: plain source hooks, setuid via its LSM hooks */
+extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
+			void *envp, int *flags);
 #endif
 
 /*
@@ -1779,6 +1782,8 @@ orig_flow:
 		ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
 	else
 		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
+#elif defined(CONFIG_KSU)
+	ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
 #endif
 
 	/*
