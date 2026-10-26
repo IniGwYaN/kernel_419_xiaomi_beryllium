@@ -11,6 +11,8 @@
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
+#include <linux/fsociety.h>
+#include <linux/moduleparam.h>
 #include <linux/thermal.h>
 
 #include "kgsl_device.h"
@@ -805,6 +807,10 @@ static ssize_t max_pwrlevel_store(struct device *dev,
 		level = pwr->min_pwrlevel;
 
 	pwr->max_pwrlevel = level;
+#ifdef CONFIG_FSOCIETY_TUNER
+	/* a manual ceiling wins until the next fsociety.profile write */
+	pwr->fsoc_manual = true;
+#endif
 
 	/* Update the current level using the new limit */
 	kgsl_pwrctrl_pwrlevel_change(device, pwr->active_pwrlevel);
@@ -1599,6 +1605,116 @@ void kgsl_pwrctrl_uninit_sysfs(struct kgsl_device *device)
  * Track the amount of time the gpu is on vs the total system time.
  * Regularly update the percentage of busy time displayed by sysfs.
  */
+#ifdef CONFIG_FSOCIETY_TUNER
+/*
+ * fsociety GPU ceiling (see drivers/misc/fsociety_tuner.c): eco = 596 MHz, game = top level, balanced = the DT
+ * qcom,fsociety-max-freq level (stock 710 MHz) lifted to the top level while a game keeps the GPU pinned at that
+ * ceiling: FSOC_BOOST_WINDOWS busy windows (>= 1 s of GPU-on time each, see kgsl_pwrctrl_busy_time) at >=
+ * gpu_boost_busy %, dropped after FSOC_UNBOOST_WINDOWS windows under FSOC_UNBOOST_BUSY % or at screen off.
+ * Thermal (thermal_pwrlevel) still caps on top of it.
+ */
+#undef MODULE_PARAM_PREFIX
+#define MODULE_PARAM_PREFIX "fsociety."
+
+#define FSOC_BOOST_WINDOWS	6
+#define FSOC_UNBOOST_WINDOWS	10
+#define FSOC_UNBOOST_BUSY	50
+
+static struct kgsl_device *fsoc_gpu;
+static bool gpu_autoboost = true;
+static unsigned int gpu_boost_busy = 85;
+static bool gpu_boosted;
+static atomic_t fsoc_force = ATOMIC_INIT(0);
+module_param(gpu_autoboost, bool, 0644);
+module_param(gpu_boost_busy, uint, 0644);
+module_param(gpu_boosted, bool, 0444);
+
+static unsigned int fsoc_ceiling(struct kgsl_pwrctrl *pwr)
+{
+	switch (fsociety_profile()) {
+	case FSOC_ECO:
+		return pwr->fsoc_eco_level;
+	case FSOC_GAME:
+		return 0;
+	default:
+		return READ_ONCE(gpu_boosted) ? 0 : pwr->fsoc_std_level;
+	}
+}
+
+static void fsoc_gpu_apply(struct work_struct *work)
+{
+	struct kgsl_device *device = READ_ONCE(fsoc_gpu);
+	struct kgsl_pwrctrl *pwr;
+	unsigned int level;
+
+	if (!device)
+		return;
+	pwr = &device->pwrctrl;
+
+	mutex_lock(&device->mutex);
+	if (atomic_xchg(&fsoc_force, 0))
+		pwr->fsoc_manual = false;
+	level = min(fsoc_ceiling(pwr), pwr->min_pwrlevel);
+	if (!pwr->fsoc_manual && level != pwr->max_pwrlevel) {
+		pwr->max_pwrlevel = level;
+		kgsl_pwrctrl_pwrlevel_change(device, pwr->active_pwrlevel);
+		pr_info("fsociety: gpu ceiling %u MHz%s\n", pwr->pwrlevels[level].gpu_freq / 1000000,
+			READ_ONCE(gpu_boosted) ? " (game boost)" : "");
+	}
+	mutex_unlock(&device->mutex);
+}
+static DECLARE_WORK(fsoc_gpu_work, fsoc_gpu_apply);
+
+void fsociety_kgsl_update(bool force)
+{
+	if (!READ_ONCE(fsoc_gpu))
+		return;
+	if (force || !fsociety_screen_on())
+		WRITE_ONCE(gpu_boosted, false);
+	if (force)
+		atomic_set(&fsoc_force, 1);
+	queue_work(system_wq, &fsoc_gpu_work);
+}
+
+/* called with device->mutex held, once per busy window */
+static void fsoc_gpu_sample(struct kgsl_device *device, u64 busy, u64 total)
+{
+	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
+	bool boosted = READ_ONCE(gpu_boosted);
+	unsigned int pct;
+
+	if (device != fsoc_gpu || !total || pwr->fsoc_manual || !fsociety_screen_on() ||
+	    fsociety_profile() != FSOC_BALANCED || (!boosted && !READ_ONCE(gpu_autoboost))) {
+		pwr->fsoc_hi = pwr->fsoc_lo = 0;
+		return;
+	}
+
+	pct = div64_u64(busy * 100, total);
+	if (!boosted) {
+		/* pinned at the balanced ceiling and still busy: a game, not a scroll */
+		if (pct >= READ_ONCE(gpu_boost_busy) && pwr->active_pwrlevel <= pwr->fsoc_std_level)
+			pwr->fsoc_hi++;
+		else
+			pwr->fsoc_hi = 0;
+		if (pwr->fsoc_hi < FSOC_BOOST_WINDOWS)
+			return;
+	} else {
+		if (pct < FSOC_UNBOOST_BUSY)
+			pwr->fsoc_lo++;
+		else
+			pwr->fsoc_lo = 0;
+		if (pwr->fsoc_lo < FSOC_UNBOOST_WINDOWS)
+			return;
+	}
+
+	pwr->fsoc_hi = pwr->fsoc_lo = 0;
+	WRITE_ONCE(gpu_boosted, !boosted);
+	queue_work(system_wq, &fsoc_gpu_work);
+}
+#else
+static inline void fsoc_gpu_sample(struct kgsl_device *device, u64 busy, u64 total) { }
+#endif
+
 void kgsl_pwrctrl_busy_time(struct kgsl_device *device, u64 time, u64 busy)
 {
 	struct kgsl_clk_stats *stats = &device->pwrctrl.clk_stats;
@@ -1616,6 +1732,7 @@ void kgsl_pwrctrl_busy_time(struct kgsl_device *device, u64 time, u64 busy)
 	stats->busy = 0;
 
 	trace_kgsl_gpubusy(device, stats->busy_old, stats->total_old);
+	fsoc_gpu_sample(device, stats->busy_old, stats->total_old);
 }
 EXPORT_SYMBOL(kgsl_pwrctrl_busy_time);
 
@@ -2208,6 +2325,17 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 		while (pwr->max_pwrlevel < pwr->min_pwrlevel &&
 		       pwr->pwrlevels[pwr->max_pwrlevel].gpu_freq > max_freq)
 			pwr->max_pwrlevel++;
+
+#ifdef CONFIG_FSOCIETY_TUNER
+	pwr->fsoc_std_level = pwr->max_pwrlevel;
+	pwr->fsoc_eco_level = 0;
+	while (pwr->fsoc_eco_level < pwr->min_pwrlevel &&
+	       pwr->pwrlevels[pwr->fsoc_eco_level].gpu_freq > 596000000)
+		pwr->fsoc_eco_level++;
+	/* boot profile from the cmdline (fsociety.profile=) */
+	pwr->max_pwrlevel = min(fsoc_ceiling(pwr), pwr->min_pwrlevel);
+	WRITE_ONCE(fsoc_gpu, device);
+#endif
 
 	pwr->wakeup_maxpwrlevel = 0;
 

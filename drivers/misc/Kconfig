@@ -664,6 +664,15 @@ source "drivers/misc/ocxl/Kconfig"
 source "drivers/misc/cardreader/Kconfig"
 source "drivers/misc/fpr_FingerprintCard/Kconfig"
 source "drivers/misc/qrc/Kconfig"
+config FSOCIETY_TUNER
+	bool "fsociety power profiles for the POCO F1"
+	depends on CPU_FREQ && DRM
+	default y
+	help
+	  Eco / balanced / game profiles (GPU and CPU ceilings), CPU ceilings while the screen is off,
+	  a game boost that lifts the balanced GPU ceiling only while the GPU stays pinned at it, and an
+	  MGLRU lock. Knobs in /sys/module/fsociety/parameters, boot default fsociety.profile=N.
+
 endmenu
 
 config OKL4_USER_VIPC

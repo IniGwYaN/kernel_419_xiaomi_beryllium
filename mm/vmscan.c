@@ -20,6 +20,7 @@
 #include <linux/gfp.h>
 #include <linux/kernel_stat.h>
 #include <linux/swap.h>
+#include <linux/fsociety.h>
 #include <linux/pagemap.h>
 #include <linux/init.h>
 #include <linux/highmem.h>
@@ -4905,6 +4906,15 @@ static ssize_t store_enable(struct kobject *kobj, struct kobj_attribute *attr,
 		caps = -1;
 	else if (kstrtouint(buf, 0, &caps))
 		return -EINVAL;
+
+	/*
+	 * fsociety: Oplus init.oplus.nandswap.sh turns MGLRU off on every kernel without its Ezr zram; keep the core
+	 * on unless fsociety.mglru_lock=0
+	 */
+	if (fsociety_mglru_locked() && !(caps & BIT(LRU_GEN_CORE))) {
+		pr_info("fsociety: keeping MGLRU on (%s tried to turn it off)\n", current->comm);
+		caps |= BIT(LRU_GEN_CORE);
+	}
 
 	for (i = 0; i < NR_LRU_GEN_CAPS; i++) {
 		bool enable = caps & BIT(i);

@@ -194,6 +194,14 @@ struct kgsl_pwrctrl {
 	uint32_t gpu_cfg;
 	const char *irq_name;
 	struct kgsl_clk_stats clk_stats;
+#ifdef CONFIG_FSOCIETY_TUNER
+	/* fsociety tuner: balanced/eco ceilings, game-boost window counters, manual max_pwrlevel override */
+	unsigned int fsoc_std_level;
+	unsigned int fsoc_eco_level;
+	unsigned int fsoc_hi;
+	unsigned int fsoc_lo;
+	bool fsoc_manual;
+#endif
 	struct pm_qos_request pm_qos_req_dma;
 	unsigned int pm_qos_active_latency;
 	unsigned int pm_qos_cpu_mask_latency;
