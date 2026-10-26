@@ -666,7 +666,7 @@ source "drivers/misc/fpr_FingerprintCard/Kconfig"
 source "drivers/misc/qrc/Kconfig"
 config FSOCIETY_TUNER
 	bool "fsociety power profiles for the POCO F1"
-	depends on CPU_FREQ && DRM
+	depends on CPU_FREQ && QCOM_KGSL=y && MACH_XIAOMI_SDM845
 	default y
 	help
 	  Eco / balanced / game profiles (GPU and CPU ceilings), CPU ceilings while the screen is off,

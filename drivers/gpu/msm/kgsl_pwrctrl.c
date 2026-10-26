@@ -13,6 +13,7 @@
 #include <linux/slab.h>
 #include <linux/fsociety.h>
 #include <linux/moduleparam.h>
+#include <linux/devfreq.h>
 #include <linux/thermal.h>
 
 #include "kgsl_device.h"
@@ -1611,7 +1612,8 @@ void kgsl_pwrctrl_uninit_sysfs(struct kgsl_device *device)
  * qcom,fsociety-max-freq level (stock 710 MHz) lifted to the top level while a game keeps the GPU pinned at that
  * ceiling: FSOC_BOOST_WINDOWS busy windows (>= 1 s of GPU-on time each, see kgsl_pwrctrl_busy_time) at >=
  * gpu_boost_busy %, dropped after FSOC_UNBOOST_WINDOWS windows under FSOC_UNBOOST_BUSY % or at screen off.
- * Thermal (thermal_pwrlevel) still caps on top of it.
+ * No boost while the ROM's power HAL keeps devfreq max_freq below the top level. Thermal (thermal_pwrlevel) still
+ * caps on top of all of it. gpu_boosted is only written with device->mutex held.
  */
 #undef MODULE_PARAM_PREFIX
 #define MODULE_PARAM_PREFIX "fsociety."
@@ -1625,6 +1627,7 @@ static bool gpu_autoboost = true;
 static unsigned int gpu_boost_busy = 85;
 static bool gpu_boosted;
 static atomic_t fsoc_force = ATOMIC_INIT(0);
+static atomic_t fsoc_drop = ATOMIC_INIT(0);
 module_param(gpu_autoboost, bool, 0644);
 module_param(gpu_boost_busy, uint, 0644);
 module_param(gpu_boosted, bool, 0444);
@@ -1641,11 +1644,21 @@ static unsigned int fsoc_ceiling(struct kgsl_pwrctrl *pwr)
 	}
 }
 
+/* devfreq max_freq set by userspace (power HAL GPUMaxFreq) when it is below the top level, else 0 */
+static unsigned long fsoc_devfreq_cap(struct kgsl_device *device)
+{
+	struct devfreq *df = device->pwrscale.devfreqptr;
+	unsigned long max = df ? READ_ONCE(df->max_freq) : 0;
+
+	return max && max < device->pwrctrl.pwrlevels[0].gpu_freq ? max : 0;
+}
+
 static void fsoc_gpu_apply(struct work_struct *work)
 {
 	struct kgsl_device *device = READ_ONCE(fsoc_gpu);
 	struct kgsl_pwrctrl *pwr;
-	unsigned int level;
+	unsigned long cap;
+	unsigned int level, mhz;
 
 	if (!device)
 		return;
@@ -1654,12 +1667,20 @@ static void fsoc_gpu_apply(struct work_struct *work)
 	mutex_lock(&device->mutex);
 	if (atomic_xchg(&fsoc_force, 0))
 		pwr->fsoc_manual = false;
+	if (atomic_xchg(&fsoc_drop, 0) || !fsociety_screen_on())
+		WRITE_ONCE(gpu_boosted, false);
 	level = min(fsoc_ceiling(pwr), pwr->min_pwrlevel);
 	if (!pwr->fsoc_manual && level != pwr->max_pwrlevel) {
 		pwr->max_pwrlevel = level;
 		kgsl_pwrctrl_pwrlevel_change(device, pwr->active_pwrlevel);
-		pr_info("fsociety: gpu ceiling %u MHz%s\n", pwr->pwrlevels[level].gpu_freq / 1000000,
-			READ_ONCE(gpu_boosted) ? " (game boost)" : "");
+		mhz = pwr->pwrlevels[level].gpu_freq / 1000000;
+		cap = fsoc_devfreq_cap(device);
+		if (cap && cap < pwr->pwrlevels[level].gpu_freq)
+			pr_info("fsociety: gpu ceiling %u MHz, held at %lu MHz by devfreq max_freq\n",
+				mhz, cap / 1000000);
+		else
+			pr_info("fsociety: gpu ceiling %u MHz%s\n", mhz,
+				READ_ONCE(gpu_boosted) ? " (game boost)" : "");
 	}
 	mutex_unlock(&device->mutex);
 }
@@ -1669,10 +1690,11 @@ void fsociety_kgsl_update(bool force)
 {
 	if (!READ_ONCE(fsoc_gpu))
 		return;
-	if (force || !fsociety_screen_on())
-		WRITE_ONCE(gpu_boosted, false);
-	if (force)
+	if (force) {
+		atomic_set(&fsoc_drop, 1);
 		atomic_set(&fsoc_force, 1);
+	}
+	/* screen off drops the boost in fsoc_gpu_apply, under the mutex */
 	queue_work(system_wq, &fsoc_gpu_work);
 }
 
@@ -1683,8 +1705,15 @@ static void fsoc_gpu_sample(struct kgsl_device *device, u64 busy, u64 total)
 	bool boosted = READ_ONCE(gpu_boosted);
 	unsigned int pct;
 
-	if (device != fsoc_gpu || !total || pwr->fsoc_manual || !fsociety_screen_on() ||
-	    fsociety_profile() != FSOC_BALANCED || (!boosted && !READ_ONCE(gpu_autoboost))) {
+	if (device != fsoc_gpu || pwr->fsoc_manual)
+		return;
+
+	/* a min_pwrlevel hold can keep a ceiling change from landing: retry it */
+	if (pwr->max_pwrlevel != min(fsoc_ceiling(pwr), pwr->min_pwrlevel))
+		queue_work(system_wq, &fsoc_gpu_work);
+
+	if (!total || !fsociety_screen_on() || fsociety_profile() != FSOC_BALANCED ||
+	    (!boosted && (!READ_ONCE(gpu_autoboost) || fsoc_devfreq_cap(device)))) {
 		pwr->fsoc_hi = pwr->fsoc_lo = 0;
 		return;
 	}
