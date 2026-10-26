@@ -426,7 +426,8 @@ SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
 #ifdef CONFIG_KSU_MANUAL_HOOK
 extern bool ksu_init_rc_hook;
 extern void ksu_handle_newfstat_ret(unsigned int *fd, struct stat __user **statbuf_ptr);
-#elif defined(CONFIG_KSU) /* backslashxx/KernelSU: plain source hooks, setuid via its LSM hooks */
+#elif defined(CONFIG_KSU) && !defined(CONFIG_KSU_SUSFS) && !defined(CONFIG_KSU_KPROBES_KSUD)
+/* backslashxx/KernelSU: plain source hooks, setuid via its LSM hooks */
 extern void ksu_handle_newfstat_ret(unsigned int *fd, struct stat __user **statbuf_ptr);
 #endif
 
@@ -441,7 +442,7 @@ SYSCALL_DEFINE2(newfstat, unsigned int, fd, struct stat __user *, statbuf)
 	/* A17 init reads init.rc only up to st_size: grow it by the ksu rc */
 	if (!error && unlikely(ksu_init_rc_hook))
 		ksu_handle_newfstat_ret(&fd, &statbuf);
-#elif defined(CONFIG_KSU)
+#elif defined(CONFIG_KSU) && !defined(CONFIG_KSU_SUSFS) && !defined(CONFIG_KSU_KPROBES_KSUD)
 	ksu_handle_newfstat_ret(&fd, &statbuf);
 #endif
 
@@ -563,7 +564,7 @@ SYSCALL_DEFINE2(lstat64, const char __user *, filename,
 	return error;
 }
 
-#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_MANUAL_HOOK) && !defined(CONFIG_KSU_SUSFS)
+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_MANUAL_HOOK) && !defined(CONFIG_KSU_SUSFS) && !defined(CONFIG_KSU_KPROBES_KSUD)
 extern void ksu_handle_fstat64_ret(unsigned long *fd, struct stat64 __user **statbuf_ptr);
 #endif
 
@@ -575,7 +576,7 @@ SYSCALL_DEFINE2(fstat64, unsigned long, fd, struct stat64 __user *, statbuf)
 	if (!error)
 		error = cp_new_stat64(&stat, statbuf);
 
-#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_MANUAL_HOOK) && !defined(CONFIG_KSU_SUSFS)
+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_MANUAL_HOOK) && !defined(CONFIG_KSU_SUSFS) && !defined(CONFIG_KSU_KPROBES_KSUD)
 	ksu_handle_fstat64_ret(&fd, &statbuf);
 #endif
 	return error;
