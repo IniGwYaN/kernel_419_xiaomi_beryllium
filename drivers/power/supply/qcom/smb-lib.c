@@ -840,9 +840,10 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 		 */
 		if (apsd_result->pst == POWER_SUPPLY_TYPE_USB ||
 		    apsd_result->pst == POWER_SUPPLY_TYPE_USB_CDP)
-			chg->usb_psy_desc.type = POWER_SUPPLY_TYPE_USB;
-		else
-			chg->usb_psy_desc.type = POWER_SUPPLY_TYPE_USB_PD;
+			chg->pc_port_seen = true;
+		/* PD turns APSD off, so its result reads UNKNOWN later on: remember the PC port */
+		chg->usb_psy_desc.type = chg->pc_port_seen ?
+			POWER_SUPPLY_TYPE_USB : POWER_SUPPLY_TYPE_USB_PD;
 #endif
 	} else {
 		/*
@@ -857,6 +858,8 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 			chg->real_charger_type = apsd_result->pst;
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 			chg->usb_psy_desc.type = apsd_result->pst;
+			chg->pc_port_seen = apsd_result->pst == POWER_SUPPLY_TYPE_USB ||
+				apsd_result->pst == POWER_SUPPLY_TYPE_USB_CDP;
 		}
 #endif
 	}
@@ -4608,6 +4611,7 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 
 		smblib_cc2_sink_removal_exit(chg);
 	} else {
+		chg->pc_port_seen = false;
 		/* Force 1500mA FCC on USB removal if fcc stepper is enabled */
 		if (chg->fcc_stepper_enable)
 			vote(chg->fcc_votable, FCC_STEPPER_VOTER,
@@ -4744,6 +4748,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 				!chg->pd_active)
 			pr_err("APSD disabled on vbus rising without PD\n");
 	} else {
+		chg->pc_port_seen = false;
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 		cancel_delayed_work_sync(&chg->typec_reenable_work);
 		cancel_delayed_work_sync(&chg->charger_type_recheck);

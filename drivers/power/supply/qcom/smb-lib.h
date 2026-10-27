@@ -396,6 +396,8 @@ struct smb_charger {
 	int			voltage_min_uv;
 	int			voltage_max_uv;
 	int			pd_active;
+	/* APSD saw SDP/CDP (a PC port) since the last plug-in; kept once PD turns APSD off */
+	bool			pc_port_seen;
 	bool			system_suspend_supported;
 	int			boost_threshold_ua;
 	int			system_temp_level;
