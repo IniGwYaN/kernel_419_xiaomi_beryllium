@@ -832,7 +832,17 @@ static const struct apsd_result *smblib_update_usb_type(struct smb_charger *chg)
 	if (chg->pd_active) {
 		chg->real_charger_type = POWER_SUPPLY_TYPE_USB_PD;
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-		chg->usb_psy_desc.type = POWER_SUPPLY_TYPE_USB_PD;
+		/*
+		 * A PC port that also offers PD (APSD saw SDP/CDP) is still a data
+		 * port: report USB to userspace (healthd maps USB_PD to AC, and the
+		 * Oplus/MIUI USB mode dialogs only show for USB). The charging logic
+		 * keeps using real_charger_type = USB_PD.
+		 */
+		if (apsd_result->pst == POWER_SUPPLY_TYPE_USB ||
+		    apsd_result->pst == POWER_SUPPLY_TYPE_USB_CDP)
+			chg->usb_psy_desc.type = POWER_SUPPLY_TYPE_USB;
+		else
+			chg->usb_psy_desc.type = POWER_SUPPLY_TYPE_USB_PD;
 #endif
 	} else {
 		/*
@@ -1292,9 +1302,11 @@ int smblib_get_icl_current(struct smb_charger *chg, int *icl_ua)
 	u8 load_cfg;
 	bool override;
 
+	/* a PD contract is never SDP current, even on a PC port reported as USB */
 	if (((chg->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_DEFAULT)
 		|| (chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB))
-		&& (chg->usb_psy_desc.type == POWER_SUPPLY_TYPE_USB)) {
+		&& (chg->usb_psy_desc.type == POWER_SUPPLY_TYPE_USB)
+		&& !chg->pd_active) {
 		rc = get_sdp_current(chg, icl_ua);
 		if (rc < 0) {
 			smblib_err(chg, "Couldn't get SDP ICL rc=%d\n", rc);
@@ -2750,7 +2762,8 @@ static int smblib_therm_charging(struct smb_charger *chg)
 
 	level = is_bypass_active() ? 0 : chg->system_temp_level;
 
-	switch (chg->usb_psy_desc.type) {
+	/* PD keeps the PD table even when a PC port is reported to userspace as USB */
+	switch (chg->pd_active ? POWER_SUPPLY_TYPE_USB_PD : chg->usb_psy_desc.type) {
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
 		thermal_icl_ua = chg->thermal_mitigation_qc2[level];
 		break;
