@@ -4611,7 +4611,7 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 
 		smblib_cc2_sink_removal_exit(chg);
 	} else {
-		chg->pc_port_seen = false;
+		/* a PD hard reset drops VBUS for a moment: same cable, keep pc_port_seen */
 		/* Force 1500mA FCC on USB removal if fcc stepper is enabled */
 		if (chg->fcc_stepper_enable)
 			vote(chg->fcc_votable, FCC_STEPPER_VOTER,
