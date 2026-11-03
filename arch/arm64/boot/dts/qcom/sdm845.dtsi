@@ -2148,7 +2148,7 @@
 		};
 
 		system_pm {
-			compatible = "qcom,system-pm-sdm845";
+			compatible = "qcom,system-pm";
 		};
 
 		clock_rpmh: qcom,rpmhclk {
