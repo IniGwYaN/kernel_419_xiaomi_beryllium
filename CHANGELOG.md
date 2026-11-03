@@ -6,14 +6,67 @@ POCO F1 (beryllium / SDM845). Base: **Aozora 4.19** by Kaiyaa77 (Linux
 Version string reports `5.10.245-fsociety-umrsrn-v1-*` (Aozora spoofs the
 KERNELVERSION to 5.10.245; the real base is 4.19.325).
 
-Root variant: **KernelSU-Next 33219 (legacy) + SUSFS**, paired with
-**KernelSU Next manager v3.3.0**. (A KernelSU-Next 3.4.2 build is still being
-worked on — its newer su/mount path breaks app root on this GSI — and is **not**
-part of this release.)
+Root variant (TEST2.0 and later): **KernelSU 32704** — backslashxx/KernelSU, the
+official-compatible driver (`KernelSU` submodule), paired with the **official
+KernelSU manager v3.3.1 (32704)**. TEST1.x used KernelSU-Next 33219 + SUSFS
+(sections below).
 
 Two builds from one source: **KSU** (`CONFIG_KSU=y`) and **NonKSU** (no root).
 
 ---
+
+## TEST2.3 (2026-11-01)
+
+- **Standby drain: SoC system sleep works** — the Aozora `sdm845.dtsi` named the
+  system-pm node `qcom,system-pm-sdm845`, but `drivers/soc/qcom/system_pm.c` only
+  matches `qcom,system-pm` (as Kyzuna 4.19 and every 4.9 tree do). The driver never
+  bound, lpm-levels skipped the only RPMh-notify cluster level and the APSS never
+  reached system sleep on any 4.19 build of this tree. One-line DT fix. Measured on
+  OxygenOS 16 (30 min screen off, Wi-Fi on): ~45 mA vs 55–58 mA on TEST2.2.
+- **Camera: `no_i2c` switch for a dead AF actuator** —
+  `/sys/module/cam_actuator_core/parameters/no_i2c`, bit N = actuator cell-index N:
+  its I2C settings are dropped and reported as applied. A broken autofocus motor
+  fails every CCI write after ~0.8 s and made camera preview crawl (2–3 fps) and
+  closing slow (~7 s, Settings QR scanner ANR). Off by default; a ROM can enable
+  it per device.
+
+## TEST2.2 (2026-11-01)
+
+- **Xiaomi thermal profile really applied** — `thermal_message/sconfig` ignored the
+  written value (always 10), and thermal-engine only re-reads it on an inotify
+  event that nothing sends outside MIUI, so every 4.19 ROM ran the default profile
+  (big cores capped from ~35 °C xo_therm). sconfig now stores the value and is
+  re-announced with `sysfs_notify` every 30 s. Measured: +55 % sustained CPU,
+  xo_therm held around 51 °C.
+- **Charging temperature limit** — thermal-engine writes
+  `battery/system_temp_level` (the 4.9 name); qpnp-smb2 only had
+  `charge_control_limit`. Both names now map to the same handler.
+
+## TEST2.0 (2026-10-27)
+
+- **fsociety tuner** (`drivers/misc/fsociety_tuner.c`,
+  `/sys/module/fsociety/parameters/profile`): eco / balanced / game profiles, GPU
+  game boost, screen-off CPU caps, MGLRU kept on.
+- **TCP BBR by default** (cubic and westwood kept), fq + fq_codel.
+- **USB with PCs that use Power Delivery** — a PD-capable PC port is reported as
+  USB (file transfer offered) and remembered across PD hard resets.
+- **KernelSU** — switched to backslashxx/KernelSU 32704 (official-compatible),
+  source hooks only where the driver does not hook itself.
+- **cpuidle** — one lpm hrtimer per CPU.
+- **Backports**: MGLRU fixes and reclaim progress (Yu Zhao, Minchan Kim,
+  Flicker372), zram fixes (Kairui Song, Sergey Senozhatsky, Longlong Xia, Alexey
+  Romanov), UFS pm_qos only on the IRQ CPU (Sultan Alsawaf), qmi_rmnet powersave
+  workqueue unbound + freezable (LibXZR), smb-lib clamps charging parameters
+  (jiro28), FocalTech no touch reads while suspended (jiro28), IPA panic on data
+  path disable timeout (neroices), bpf nospec stack slot fix, futex robust exit
+  race, af_alg zero-copy removal.
+
+## TEST1.1 – TEST1.5 (2026-10-20 – 10-25)
+
+- SELinux: deny `PTRACE_TRACEME` like an enforcing device even when permissive.
+- usbpd: don't raise Rp to 1.5 A on sink attach (4.9 behaviour).
+- Reboot guard and named device shutdown.
+- KernelSU: plain manual hooks when SUSFS is off.
 
 ## TEST1.0 (2026-10-19)
 

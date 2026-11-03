@@ -7,14 +7,22 @@ fsociety kernel 4.19 for POCO F1 (beryllium)
 Builds
 ------
 
-  KSU    KernelSU-Next 33219 + SUSFS (KernelSU Next manager v3.3.0)
+  KSU    KernelSU 32704, backslashxx/KernelSU official-compatible driver
+         (official KernelSU manager v3.3.1, 32704)
   NoSU   no root
+
+  Latest: TEST2.3 (see CHANGELOG.md)
 
   Profiles   STD   GPU 710 MHz, thermal on
              OC    GPU 802 MHz, relaxed thermal
 
 4.19 bug fixes
 --------------
+
+ - High standby drain: the SoC never reached system sleep (system-pm
+   driver never bound). Fixed in TEST2.3.
+ - Xiaomi thermal profile never applied on non-MIUI ROMs, and the
+   charging temperature limit did nothing. Fixed in TEST2.2.
 
  - Phone powers off on reboot: warm reboot. Tested 10-15 reboots.
  - USB not detected after replugging: fixed. Tested 10-15 replugs,
@@ -39,6 +47,10 @@ Other fixes
 Extras
 ------
 
+ - fsociety tuner: eco / balanced / game profiles, GPU game boost,
+   screen-off CPU caps (TEST2.0). TCP BBR by default.
+ - Camera: no_i2c switch for phones with a dead autofocus motor.
+
  - STD / OC profiles (GPU 710 / 802 MHz and thermal settings).
  - fsociety-control module (WebUI: Standard / Gaming).
  - Clean installer screen, short kernel version text, two builds
@@ -58,10 +70,13 @@ Credits
   Kaiyaa77 (@Kaiyaa77Ar)      Aozora 4.19 base
   Kyy (@kyzuna28)             Kyzuna dtsi, KernelSU-Next fork
   KernelSU-Next team
+  backslashxx                 KernelSU (official-compatible driver)
   simonpunk                   SUSFS
   diphons                     SDM845 4.19 port
   LineageOS / Bruno Martins   warm reboot
-  Sultan Alsawaf              cycle-count fix
+  Sultan Alsawaf              cycle-count fix, UFS pm_qos
+  Yu Zhao / MGLRU, zram authors   upstream backports
+  LibXZR, neroices            rmnet / IPA fixes
   Stanislav Fomichev          upstream BPF bind patch
   Beryllium-Labs / jiro28     4.19 backport reference
 
