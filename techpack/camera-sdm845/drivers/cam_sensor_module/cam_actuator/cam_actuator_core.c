@@ -714,6 +714,16 @@ int32_t cam_actuator_slaveInfo_pkt_parser(struct cam_actuator_ctrl_t *a_ctrl,
 	return rc;
 }
 
+/*
+ * UMRSRN beryllium: bit N = actuator cell-index N gets its I2C settings dropped and reported as applied. A dead AF
+ * actuator fails every CCI write with -110 after ~0.8 s and CamX keeps sending lens moves and a park sequence on close
+ * (2-3 fps API1 preview, ~7 s camera close = Settings QR scanner ANR). Reporting "no actuator" in the sensor caps
+ * instead breaks CamX session re-creation (cached actuator index). Off by default; the ROM's opt-in camfix rc
+ * (persist.sys.beryllium.camfix=1) sets it.
+ */
+static uint no_i2c;
+module_param(no_i2c, uint, 0644);
+
 int32_t cam_actuator_apply_settings(struct cam_actuator_ctrl_t *a_ctrl,
 	struct i2c_settings_array *i2c_set)
 {
@@ -729,6 +739,9 @@ int32_t cam_actuator_apply_settings(struct cam_actuator_ctrl_t *a_ctrl,
 		CAM_ERR(CAM_ACTUATOR, " Invalid settings");
 		return -EINVAL;
 	}
+
+	if (no_i2c & BIT(a_ctrl->soc_info.index))
+		return 0;
 
 	list_for_each_entry(i2c_list,
 		&(i2c_set->list_head), list) {
