@@ -1723,12 +1723,26 @@ thermal_sconfig_store(struct device *dev,
 	int ret, val = -1;
 
 	ret = kstrtoint(buf, 10, &val);
-
-	atomic_set(&switch_mode, 10);
-
 	if (ret)
 		return ret;
+
+	atomic_set(&switch_mode, val);
 	return len;
+}
+
+/*
+ * Xiaomi thermal-engine starts on profile 0 (the vendor default, big cores capped from 35C xo_therm)
+ * and re-reads sconfig only on an inotify modify event, which nothing sends on non-MIUI ROMs.
+ * Announce the selected profile (default 10 = nolimits in thermal-engine-sdm845-map.conf) every
+ * 30s, so it applies after boot and after a thermal-engine restart; an unchanged value is ignored.
+ */
+static void sconfig_notify_fn(struct work_struct *work);
+static DECLARE_DEFERRABLE_WORK(sconfig_notify_work, sconfig_notify_fn);
+
+static void sconfig_notify_fn(struct work_struct *work)
+{
+	sysfs_notify(&thermal_message_dev.kobj, NULL, "sconfig");
+	schedule_delayed_work(&sconfig_notify_work, 30 * HZ);
 }
 
 static DEVICE_ATTR(sconfig, 0664,
@@ -1797,6 +1811,8 @@ static int create_thermal_message_node(void) {
 		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_sconfig.attr);
 		if (ret < 0)
 			pr_warn("Thermal: create sconfig node failed\n");
+		else
+			schedule_delayed_work(&sconfig_notify_work, 30 * HZ);
 
 		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_boost.attr);
 		if (ret < 0)
@@ -1811,6 +1827,7 @@ static int create_thermal_message_node(void) {
 }
 
 static void destroy_thermal_message_node(void) {
+	cancel_delayed_work_sync(&sconfig_notify_work);
 	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_temp_state.attr);
 	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_sconfig.attr);
 	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_boost.attr);
