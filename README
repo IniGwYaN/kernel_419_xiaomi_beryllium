@@ -1,191 +1,61 @@
 AKEDORE kernel 4.19 for POCO F1 (beryllium)
 ===========================================
 
-  Custom Linux 4.19.325 kernel for the Xiaomi POCO F1 (SDM845), for
-  ROMs with a 4.19 vendor. Based on Aozora 4.19 by Kaiyaa77.
-
-  Formerly "fsociety kernel" (TEST1.x - TEST2.3). Renamed to AKEDORE
-  in v1; the code of v1 is TEST2.3.
+  Custom Linux 4.19.325 kernel for the POCO F1, for 4.19 ROMs.
+  Based on Aozora 4.19 by Kaiyaa77. Formerly "fsociety kernel".
 
 Builds
 ------
 
-  KSU    KernelSU 32704, backslashxx/KernelSU official-compatible driver
-  NoSU   no root (use this with Magisk, or without root)
+  KSU    KernelSU 32704 (official KernelSU manager, 32704)
+  NoSU   no root (for Magisk or no root)
 
-  Latest:        v1 (2026-11-04)
-  Version text:  5.10.245-akedore-umrsrn-v1-KSU / -NonKSU
-  Zip names:     akedore-kernel-4.19-v1-KSU-UMUM-<date>-beryllium.zip
-                 akedore-kernel-4.19-v1-NoSU-UMUM-<date>-beryllium.zip
-
-  The version shows 5.10.245 because Aozora spoofs the version text.
-  The real base is Linux 4.19.325.
-
-Requirements
-------------
-
-  - POCO F1 (beryllium).
-  - A ROM with a 4.19 vendor. It does NOT boot on 4.9 ROMs; for those
-    use AKEDORE kernel 4.9. The zip reads the kernel already in boot
-    and stops if the ROM is on the other kernel line.
-  - A recovery that can flash AnyKernel3 zips (OrangeFox, TWRP).
+  Latest: v1. Version text: 5.10.245-akedore-umrsrn-v1-KSU / -NonKSU
+  (5.10.245 is Aozora's spoof, the real base is 4.19.325).
 
 Install
 -------
 
-  1. Back up your current boot image in recovery.
-  2. Flash the AKEDORE zip in recovery.
-  3. Reboot to system.
+  Flash the zip in recovery (back up boot first). 4.19 ROMs only:
+  the zip refuses to flash on a 4.9 ROM.
 
-  To go back: restore the boot backup, or dirty flash the ROM.
+Fixes
+-----
 
-Root (KSU build)
-----------------
+  - Standby drain: SoC deep sleep works again (~45 mA screen off).
+  - Xiaomi thermal profile and charging temperature limit now work.
+  - Phone powering off on reboot: fixed (tested 10-15 reboots).
+  - USB not detected after replug: fixed (tested 10-15 replugs).
+  - USB file transfer menu on PD laptop ports: fixed.
+  - Chrome/Brave crash and bpfloader bootloop on Android 17: fixed.
+  - Vibrations >= 1 s, QC2 thermal typo, PD/PPS charging at 25 mA.
+  - Battery jumps / shutdown with charge left: fix included, not
+    fully tested yet.
 
-  - Manager: the official KernelSU manager with version 32704
-    (KernelSU v3.3.1-24-g528bafc5). Other managers (KernelSU-Next,
-    SukiSU, older builds) do not match this driver.
-  - Install only ONE KernelSU manager. Uninstall old ones first.
-  - KernelSU has no popup: allow root for an app in the manager, then
-    force stop and reopen that app.
-  - App Profile "Default" gives full root. Templates with limited
-    capabilities give limited root.
-  - KernelSU has no built-in Zygisk. Use a Zygisk module if you
-    need it (for example ReZygisk or NeoZygisk).
+Extras
+------
 
-4.19 bug fixes
---------------
+  - GPU 710 MHz, auto boost to 802 MHz while gaming.
+  - Eco / balanced / game profiles, lower CPU limits with screen off,
+    TCP BBR. Settings: /sys/module/fsociety/parameters/.
 
-  These are known bugs of 4.19 kernels on this phone. Test status is
-  given for each one.
+Notes
+-----
 
-  - High standby drain: the SoC never reached system sleep (the
-    system-pm driver never bound). Fixed in TEST2.3. Measured: about
-    45 mA screen off with Wi-Fi on (before: 55-58 mA).
-  - Xiaomi thermal profile never applied on non-MIUI ROMs, and the
-    charging temperature limit did nothing. Fixed in TEST2.2.
-    Measured: +55 % sustained CPU, xo_therm held near 51 C.
-  - Phone powers off on reboot: warm reboot. Tested 10-15 reboots.
-  - USB not detected after replugging: fixed. Tested 10-15 replugs,
-    USB and MTP show up right away.
-  - No "file transfer" menu on PC ports that use USB Power Delivery:
-    the port is now reported as USB. Tested on device.
-  - Battery drops or shuts off with charge left: fuel-gauge fix
-    included, not fully tested yet.
-  - Battery cycle count not fully cleared: fixed.
-
-Other fixes
------------
-
-  - Chrome/Brave crash on Android 17: CAP_CHECKPOINT_RESTORE backport.
-  - Android 17 bootloop on some ROMs (bpfloader): BPF bind return
-    values 0..3 allowed (upstream backport).
-  - Bootloop with newer clang: removed an LTO flag from the Aozora
-    Makefile that crashed the kernel at boot.
-  - Vibrations of 1 s or longer did nothing: haptics timer typo
-    (present in every beryllium kernel).
-  - QC2 charging thermal typo: 10.2 A corrected to 1.025 A.
-  - PD/PPS chargers dropping to 25 mA: charging parameters clamped.
-  - Camera: no_i2c switch for phones with a dead autofocus motor
-    (off by default).
-  - Backports: MGLRU and zram fixes, UFS pm_qos, rmnet/IPA fixes,
-    one cpuidle timer per CPU, BBR as the default TCP congestion.
-
-Tuner and game boost
---------------------
-
-  Settings live in /sys/module/fsociety/parameters/ (root):
-
-    profile         0 eco, 1 balanced (default), 2 game
-    gpu_autoboost   1 (default) = game boost on, 0 = off
-    gpu_boost_busy  GPU busy % that starts the boost (default 85)
-    screen_off_cap  1 (default) = lower CPU limits with screen off
-    mglru_lock      1 (default) = keep MGLRU on
-
-  - eco:       GPU up to 596 MHz, CPU 1.52 / 2.00 GHz (screen on).
-  - balanced:  GPU up to 710 MHz (stock). While a game keeps the GPU
-               busy at 710 MHz, it is lifted to 802 MHz; it drops back
-               when the load goes down or the screen turns off.
-  - game:      GPU up to 802 MHz all the time.
-  - screen off: CPU 1.23 / 1.46 GHz for background work.
-
-  These are upper limits only. Thermal (kernel zones, LMH and the
-  ROM's thermal-engine) still works on top of them.
-
-  The fsociety Kernel Control module (KernelSU/Magisk, WebUI) switches
-  Standard / Gaming and watches battery temperature (47 C, 45 C while
-  charging). It is shared with the release zips, not in this repo.
-
-Known issues
-------------
-
-  - Double-tap-to-wake is reliable only with Always-On Display on. On
-    a replaced (non-original) LCD the touch IC can drop off when the
-    screen is fully off, so a tap is not always read.
-  - The first USB plug after a cold boot can rarely be missed;
-    replugging works.
-  - The internal names still say fsociety (/sys/module/fsociety,
-    CONFIG_FSOCIETY_TUNER, the control module). This is on purpose, so
-    scripts and modules keep working.
-
-Reporting a bug
----------------
-
-  Please open a GitHub issue with:
-
-  - ROM name and version, KSU or NoSU build, root solution.
-  - What you did and what happened.
-  - Logs (root shell):
-      dmesg > /sdcard/dmesg.txt
-      logcat -b all -d > /sdcard/logcat.txt
-    If the phone rebooted or turned off by itself, also:
-      cat /sys/fs/pstore/* > /sdcard/pstore.txt
-
-Building from source
---------------------
-
-  - Clang/LLVM toolchain (tested: Neutron clang 24) and the
-    aarch64-linux-gnu- / arm-linux-gnueabi- binutils.
-  - The KSU build needs the KernelSU submodule:
-      git submodule update --init
-  - Build:
-      CLANG_DIR=/path/to/clang ./build_akedore.sh ksu
-      CLANG_DIR=/path/to/clang ./build_akedore.sh nosu
-  - Output: out/ (ksu) or out-nosu/ (nosu),
-    arch/arm64/boot/Image.gz-dtb. Pack it with AnyKernel3.
-  - PROFILE=oc builds the old OC device tree (14 thermal zones off).
-    It is not used for the release zips.
-
-Branches
---------
-
-  akedore         AKEDORE kernel 4.19 (default)
-  v0.x, v1.0, tes Aozora upstream branches (base history)
+  - Double-tap-to-wake on a non-original LCD works only with AOD on.
+  - Build: ./build_akedore.sh [ksu|nosu]. Details: CHANGELOG.md.
 
 Credits
 -------
 
   Kaiyaa77 (@Kaiyaa77Ar)      Aozora 4.19 base
-  Kyy (@kyzuna28)             Kyzuna dtsi, KernelSU-Next fork
-  tiann / KernelSU team       KernelSU
-  backslashxx                 KernelSU (official-compatible driver)
-  KernelSU-Next team          KernelSU-Next (TEST1.x)
-  simonpunk                   SUSFS (TEST1.x)
+  Kyy (@kyzuna28)             Kyzuna dtsi
+  tiann, backslashxx          KernelSU
   diphons                     SDM845 4.19 port
   LineageOS / Bruno Martins   warm reboot
-  Sultan Alsawaf              cycle-count fix, UFS pm_qos
-  Yu Zhao / MGLRU, zram authors   upstream backports
-  LibXZR, neroices            rmnet / IPA fixes
-  Stanislav Fomichev          upstream BPF bind patch
-  Beryllium-Labs / jiro28     4.19 backport reference, charger clamp
+  Sultan Alsawaf              cycle count, UFS pm_qos
+  Beryllium-Labs / jiro28     backport reference, charger clamp
+  Yu Zhao, Stanislav Fomichev upstream backports
   osm0sis                     AnyKernel3
 
-  Full details: CHANGELOG.md. Full author list: git log.
-
   License: GPL-2.0. Built by UMRSRN (@umrsrn1318).
-
-Linux kernel
-------------
-
-  Kernel documentation: Documentation/admin-guide/README.rst,
-  online at https://www.kernel.org/doc/html/latest/
