@@ -1,5 +1,5 @@
 #!/bin/bash
-# build_fsociety.sh [ksu|nosu] - build fsociety kernel for POCO F1 (beryllium).
+# build_akedore.sh [ksu|nosu] - build AKEDORE kernel for POCO F1 (beryllium).
 # PROFILE=std (default: GPU 710 MHz, all thermal zones) or PROFILE=oc (GPU 802 MHz, relaxed thermal).
 # Needs an LLVM/clang toolchain (tested: Neutron clang 24) in $CLANG_DIR/bin, plus aarch64/arm GNU binutils prefixes.
 # Output: out[-nosu]/arch/arm64/boot/Image.gz-dtb (flash with AnyKernel3).
@@ -15,10 +15,10 @@ export KCFLAGS="-Wno-error"
 $M beryllium_defconfig
 if [ $VARIANT = ksu ]; then
   # backslashxx/KernelSU 32704 (official-compatible): source hooks + LSM hooks, no kprobes / branch-link / syscall-table tricks
-  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-fsociety-umrsrn-v1-KSU" -e KSU -e KSU_LSM_SECURITY_HOOKS \
+  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-akedore-umrsrn-v1-KSU" -e KSU -e KSU_LSM_SECURITY_HOOKS \
     -d KSU_KPROBES_KSUD -d KSU_HACK_ARM64_BRANCH_LINK -d KSU_TAMPER_SYSCALL_TABLE
 else
-  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-fsociety-umrsrn-v1-NonKSU" -d KSU
+  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-akedore-umrsrn-v1-NonKSU" -d KSU
 fi
 $M olddefconfig
 $M

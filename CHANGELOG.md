@@ -1,9 +1,10 @@
-# fsociety kernel 4.19 — CHANGELOG
+# AKEDORE kernel 4.19 — CHANGELOG
 
 POCO F1 (beryllium / SDM845). Base: **Aozora 4.19** by Kaiyaa77 (Linux
 4.19.325, CLO cip135-st19). Everything below is on top of that base.
 
-Version string reports `5.10.245-fsociety-umrsrn-v1-*` (Aozora spoofs the
+Version string reports `5.10.245-akedore-umrsrn-v1-KSU` / `-NonKSU` (TEST builds:
+`5.10.245-fsociety-umrsrn-v1-*`) (Aozora spoofs the
 KERNELVERSION to 5.10.245; the real base is 4.19.325).
 
 Root variant (TEST2.0 and later): **KernelSU 32704** — backslashxx/KernelSU, the
@@ -14,6 +15,16 @@ KernelSU manager v3.3.1 (32704)**. TEST1.x used KernelSU-Next 33219 + SUSFS
 Two builds from one source: **KSU** (`CONFIG_KSU=y`) and **NonKSU** (no root).
 
 ---
+
+## v1 (2026-11-04)
+
+- **Renamed: fsociety kernel -> AKEDORE kernel.** Branding only: version string
+  (`-akedore-umrsrn-v1-KSU` / `-NonKSU`), build host, installer text and
+  `build_akedore.sh`. The code is TEST2.3 unchanged. Internal names stay as
+  they were, so existing setups keep working: `/sys/module/fsociety/parameters/*`,
+  `CONFIG_FSOCIETY_TUNER`, the fsociety Kernel Control module.
+- Older entries below keep the old name (TEST1.x / TEST2.x were released as
+  fsociety kernel).
 
 ## TEST2.3 (2026-11-01)
 

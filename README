@@ -1,5 +1,5 @@
-fsociety kernel 4.19 for POCO F1 (beryllium)
-============================================
+AKEDORE kernel 4.19 for POCO F1 (beryllium)
+===========================================
 
   Custom Linux 4.19.325 kernel for the Xiaomi POCO F1 (SDM845),
   based on Aozora 4.19 by Kaiyaa77.
@@ -11,7 +11,9 @@ Builds
          (official KernelSU manager v3.3.1, 32704)
   NoSU   no root
 
-  Latest: TEST2.3 (see CHANGELOG.md)
+  Latest: v1 (= TEST2.3 code, renamed; see CHANGELOG.md)
+
+  Version text: 5.10.245-akedore-umrsrn-v1-KSU / -NonKSU
 
   Profiles   STD   GPU 710 MHz, thermal on
              OC    GPU 802 MHz, relaxed thermal
@@ -47,12 +49,12 @@ Other fixes
 Extras
 ------
 
- - fsociety tuner: eco / balanced / game profiles, GPU game boost,
+ - Tuner (/sys/module/fsociety): eco / balanced / game profiles, GPU game boost,
    screen-off CPU caps (TEST2.0). TCP BBR by default.
  - Camera: no_i2c switch for phones with a dead autofocus motor.
 
  - STD / OC profiles (GPU 710 / 802 MHz and thermal settings).
- - fsociety-control module (WebUI: Standard / Gaming).
+ - fsociety Kernel Control module (WebUI: Standard / Gaming).
  - Clean installer screen, short kernel version text, two builds
    (KSU and NoSU).
 
@@ -62,6 +64,9 @@ Notes
  - For 4.19 ROMs only (not 4.9).
  - The version shows 5.10.245 (Aozora's spoof); the real base is
    4.19.325.
+ - Formerly "fsociety kernel" (TEST1.x - TEST2.3). Renamed in v1;
+   internal names (/sys/module/fsociety, the control module) stay.
+ - Build: ./build_akedore.sh [ksu|nosu]
  - Full details: see CHANGELOG.md.
 
 Credits
