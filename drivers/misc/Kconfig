@@ -673,6 +673,14 @@ config FSOCIETY_TUNER
 	  a game boost that lifts the balanced GPU ceiling only while the GPU stays pinned at it, and an
 	  MGLRU lock. Knobs in /sys/module/fsociety/parameters, boot default fsociety.profile=N.
 
+config FSOCIETY_GPU_AUTOBOOST
+	bool "Game boost on by default (AKEDORE AutoBoost build)"
+	depends on FSOCIETY_TUNER
+	default y
+	help
+	  Boot default of fsociety.gpu_autoboost. n = Standard build: the balanced profile stays at the
+	  710 MHz ceiling until gpu_autoboost is set to 1 (or the game profile is picked).
+
 endmenu
 
 config OKL4_USER_VIPC

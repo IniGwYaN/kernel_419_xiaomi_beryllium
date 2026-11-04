@@ -1623,7 +1623,7 @@ void kgsl_pwrctrl_uninit_sysfs(struct kgsl_device *device)
 #define FSOC_UNBOOST_BUSY	50
 
 static struct kgsl_device *fsoc_gpu;
-static bool gpu_autoboost = true;
+static bool gpu_autoboost = IS_ENABLED(CONFIG_FSOCIETY_GPU_AUTOBOOST);
 static unsigned int gpu_boost_busy = 85;
 static bool gpu_boosted;
 static atomic_t fsoc_force = ATOMIC_INIT(0);

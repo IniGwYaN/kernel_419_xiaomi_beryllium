@@ -9,11 +9,15 @@ AKEDORE kernel 4.19 for POCO F1 (beryllium)
 Builds
 ------
 
-  KSU    KernelSU 32704 (official KernelSU manager, 32704)
-  NoSU   no root (for Magisk or no root)
+  KSU        KernelSU 32704 (official KernelSU manager, 32704)
+  NoSU       no root (for Magisk or no root)
 
-  Latest: 20261105 (AKEDORE-4.19-<KSU|NoSU>-802MHz-20261105.zip).
-  Version text: 5.10.245-akedore-umrsrn-v1-KSU / -NonKSU
+  Standard   GPU stock 710 MHz
+  AutoBoost  GPU 710 MHz, boosted to 802 MHz while gaming
+
+  Latest: 20261105, AKEDORE-4.19-<KSU|NoSU>-<Standard|AutoBoost>-*.zip
+  Version text: 5.10.245-akedore-umrsrn-v1-KSU (Standard) or
+  -v1-AutoBoost-KSU; -NonKSU for NoSU.
   (5.10.245 is Aozora's spoof, the real base is 4.19.325).
 
   Tested on: OxygenOS 16 port (A16), PixelOS 17 and RestOS 17 (A17).
@@ -40,7 +44,8 @@ Fixes
 Extras
 ------
 
-  - GPU 710 MHz, auto boost to 802 MHz while gaming.
+  - Standard can boost too: set gpu_autoboost to 1, or pick Gaming
+    in the control module.
   - Eco / balanced / game profiles, lower CPU limits with screen off,
     TCP BBR. Settings: /sys/module/fsociety/parameters/.
 

@@ -16,6 +16,17 @@ Two builds from one source: **KSU** (`CONFIG_KSU=y`) and **NonKSU** (no root).
 
 ---
 
+## 20261105
+
+- **Two builds: Standard and AutoBoost.** New option
+  `CONFIG_FSOCIETY_GPU_AUTOBOOST` sets the boot default of
+  `fsociety.gpu_autoboost`. Standard (`n`): the GPU stays at the stock 710 MHz
+  ceiling; the boost can still be turned on at runtime (`gpu_autoboost=1`) or the
+  game profile picked. AutoBoost (`y`, the TEST2.0 - v1 behaviour): 710 MHz,
+  lifted to 802 MHz while a game keeps the GPU pinned. Version string
+  `-akedore-umrsrn-v1-KSU` (Standard) / `-akedore-umrsrn-v1-AutoBoost-KSU`.
+- Zip names: `AKEDORE-4.19-<KSU|NoSU>-<Standard|AutoBoost>-<date>.zip`.
+
 ## v1 (2026-11-04)
 
 - **Renamed: fsociety kernel -> AKEDORE kernel.** Branding only: version string
