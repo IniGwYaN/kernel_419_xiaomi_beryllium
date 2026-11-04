@@ -7,24 +7,8 @@ AKEDORE kernel 4.19 for POCO F1 (beryllium)
   Formerly "fsociety kernel" (TEST1.x - TEST2.3). Renamed to AKEDORE
   in v1; the code of v1 is TEST2.3.
 
-Contents
---------
-
-  1. Builds
-  2. Requirements
-  3. Install
-  4. Root (KSU build)
-  5. 4.19 bug fixes
-  6. Other fixes
-  7. Tuner and game boost
-  8. Known issues
-  9. Reporting a bug
-  10. Building from source
-  11. Branches
-  12. Credits
-
-1. Builds
----------
+Builds
+------
 
   KSU    KernelSU 32704, backslashxx/KernelSU official-compatible driver
   NoSU   no root (use this with Magisk, or without root)
@@ -37,8 +21,8 @@ Contents
   The version shows 5.10.245 because Aozora spoofs the version text.
   The real base is Linux 4.19.325.
 
-2. Requirements
----------------
+Requirements
+------------
 
   - POCO F1 (beryllium).
   - A ROM with a 4.19 vendor. It does NOT boot on 4.9 ROMs; for those
@@ -46,8 +30,8 @@ Contents
     and stops if the ROM is on the other kernel line.
   - A recovery that can flash AnyKernel3 zips (OrangeFox, TWRP).
 
-3. Install
-----------
+Install
+-------
 
   1. Back up your current boot image in recovery.
   2. Flash the AKEDORE zip in recovery.
@@ -55,8 +39,8 @@ Contents
 
   To go back: restore the boot backup, or dirty flash the ROM.
 
-4. Root (KSU build)
--------------------
+Root (KSU build)
+----------------
 
   - Manager: the official KernelSU manager with version 32704
     (KernelSU v3.3.1-24-g528bafc5). Other managers (KernelSU-Next,
@@ -69,8 +53,8 @@ Contents
   - KernelSU has no built-in Zygisk. Use a Zygisk module if you
     need it (for example ReZygisk or NeoZygisk).
 
-5. 4.19 bug fixes
------------------
+4.19 bug fixes
+--------------
 
   These are known bugs of 4.19 kernels on this phone. Test status is
   given for each one.
@@ -90,8 +74,8 @@ Contents
     included, not fully tested yet.
   - Battery cycle count not fully cleared: fixed.
 
-6. Other fixes
---------------
+Other fixes
+-----------
 
   - Chrome/Brave crash on Android 17: CAP_CHECKPOINT_RESTORE backport.
   - Android 17 bootloop on some ROMs (bpfloader): BPF bind return
@@ -107,8 +91,8 @@ Contents
   - Backports: MGLRU and zram fixes, UFS pm_qos, rmnet/IPA fixes,
     one cpuidle timer per CPU, BBR as the default TCP congestion.
 
-7. Tuner and game boost
------------------------
+Tuner and game boost
+--------------------
 
   Settings live in /sys/module/fsociety/parameters/ (root):
 
@@ -132,8 +116,8 @@ Contents
   Standard / Gaming and watches battery temperature (47 C, 45 C while
   charging). It is shared with the release zips, not in this repo.
 
-8. Known issues
----------------
+Known issues
+------------
 
   - Double-tap-to-wake is reliable only with Always-On Display on. On
     a replaced (non-original) LCD the touch IC can drop off when the
@@ -144,8 +128,8 @@ Contents
     CONFIG_FSOCIETY_TUNER, the control module). This is on purpose, so
     scripts and modules keep working.
 
-9. Reporting a bug
-------------------
+Reporting a bug
+---------------
 
   Please open a GitHub issue with:
 
@@ -157,8 +141,8 @@ Contents
     If the phone rebooted or turned off by itself, also:
       cat /sys/fs/pstore/* > /sdcard/pstore.txt
 
-10. Building from source
-------------------------
+Building from source
+--------------------
 
   - Clang/LLVM toolchain (tested: Neutron clang 24) and the
     aarch64-linux-gnu- / arm-linux-gnueabi- binutils.
@@ -172,14 +156,14 @@ Contents
   - PROFILE=oc builds the old OC device tree (14 thermal zones off).
     It is not used for the release zips.
 
-11. Branches
-------------
+Branches
+--------
 
   akedore         AKEDORE kernel 4.19 (default)
   v0.x, v1.0, tes Aozora upstream branches (base history)
 
-12. Credits
------------
+Credits
+-------
 
   Kaiyaa77 (@Kaiyaa77Ar)      Aozora 4.19 base
   Kyy (@kyzuna28)             Kyzuna dtsi, KernelSU-Next fork
