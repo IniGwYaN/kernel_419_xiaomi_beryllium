@@ -13,6 +13,8 @@ Builds
   Latest: v1. Version text: 5.10.245-akedore-umrsrn-v1-KSU / -NonKSU
   (5.10.245 is Aozora's spoof, the real base is 4.19.325).
 
+  Tested on: OxygenOS 16 port (A16), PixelOS 17 and RestOS 17 (A17).
+
 Install
 -------
 
