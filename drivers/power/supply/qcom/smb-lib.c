@@ -2,6 +2,7 @@
 /* Copyright (c) 2016-2020 The Linux Foundation. All rights reserved.
  */
 
+#include <linux/moduleparam.h>
 #include <linux/device.h>
 #include <linux/regmap.h>
 #include <linux/delay.h>
@@ -2754,6 +2755,33 @@ static void smblib_reg_work(struct work_struct *work)
 #define PD_MICRO_7P5V	7500000
 #define PD_MICRO_8P5V	8500000
 #define PD_MICRO_9V		9000000
+/*
+ * AKEDORE fast charge: thermal-engine picks the level from xo_therm, which
+ * reads ~41 C whenever the screen is on, so it throttles to ~5 W input even
+ * with a cool battery. Judge by the battery instead (deci-degC, 0 = off):
+ * below fastchg_cool ignore thermal-engine, below fastchg_warm cap at level
+ * FASTCHG_WARM_LEVEL, above that stock behavior. JEITA (warm 45 C, hot 60 C)
+ * still applies in hardware.
+ */
+static int fastchg_cool = 400;
+static int fastchg_warm = 430;
+module_param(fastchg_cool, int, 0644);
+module_param(fastchg_warm, int, 0644);
+#define FASTCHG_WARM_LEVEL	5
+
+static int akedore_fastchg_level(struct smb_charger *chg, int level)
+{
+	union power_supply_propval t = {0, };
+
+	if (level <= 0 || smblib_get_prop_from_bms(chg, POWER_SUPPLY_PROP_TEMP, &t) < 0)
+		return level;
+	if (t.intval < fastchg_cool)
+		return 0;
+	if (t.intval < fastchg_warm)
+		return min(level, FASTCHG_WARM_LEVEL);
+	return level;
+}
+
 static int smblib_therm_charging(struct smb_charger *chg)
 {
 	int thermal_icl_ua = 0;
@@ -2764,6 +2792,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 		return 0;
 
 	level = is_bypass_active() ? 0 : chg->system_temp_level;
+	level = akedore_fastchg_level(chg, level);
 
 	/* PD keeps the PD table even when a PC port is reported to userspace as USB */
 	switch (chg->pd_active ? POWER_SUPPLY_TYPE_USB_PD : chg->usb_psy_desc.type) {
@@ -6289,6 +6318,20 @@ static void bms_update_work(struct work_struct *work)
 						bms_update_work);
 
 	smblib_suspend_on_debug_battery(chg);
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845) && defined(CONFIG_THERMAL)
+	/* battery temp moved: re-judge the fast charge cap */
+	if (chg->typec_present && chg->system_temp_level > 0 &&
+	    chg->system_temp_level < chg->thermal_levels) {
+		static int last_eff = -1;
+		int eff = akedore_fastchg_level(chg, chg->system_temp_level);
+
+		if (eff != last_eff) {
+			last_eff = eff;
+			smblib_therm_charging(chg);
+		}
+	}
+#endif
 
 	if (chg->batt_psy)
 		power_supply_changed(chg->batt_psy);
