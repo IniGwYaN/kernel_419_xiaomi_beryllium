@@ -2763,8 +2763,8 @@ static void smblib_reg_work(struct work_struct *work)
  * FASTCHG_WARM_LEVEL, above that stock behavior. JEITA (warm 45 C, hot 60 C)
  * still applies in hardware.
  */
-static int fastchg_cool = 400;
-static int fastchg_warm = 430;
+static int fastchg_cool = 420;
+static int fastchg_warm = 450;
 module_param(fastchg_cool, int, 0644);
 module_param(fastchg_warm, int, 0644);
 #define FASTCHG_WARM_LEVEL	5
