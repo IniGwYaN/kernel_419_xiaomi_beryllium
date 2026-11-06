@@ -18,6 +18,8 @@
 #include <linux/init.h>
 #include <linux/moduleparam.h>
 #include <linux/notifier.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 #include <linux/workqueue.h>
 #include <drm/drm_notifier.h>
 
@@ -192,6 +194,23 @@ module_param_cb(screen_off_cap, &bool_ops, &screen_off_cap, 0644);
 module_param(mglru_lock, bool, 0644);
 module_param(screen_on, bool, 0444);
 
+/* /proc/cpumaxfreq: HyperOS Settings (About phone > CPU) reads the top CPU clock here in GHz, e.g. "2.8" */
+static int cpumaxfreq_show(struct seq_file *m, void *v)
+{
+	unsigned int cpu, khz = 0;
+
+	for_each_possible_cpu(cpu) {
+		struct cpufreq_policy *p = cpufreq_cpu_get(cpu);
+
+		if (p) {
+			khz = max(khz, p->cpuinfo.max_freq);
+			cpufreq_cpu_put(p);
+		}
+	}
+	seq_printf(m, "%u.%u\n", khz / 1000000, (khz % 1000000) / 100000);
+	return 0;
+}
+
 static int __init fsociety_tuner_init(void)
 {
 	int ret = cpufreq_register_notifier(&cpufreq_nb, CPUFREQ_POLICY_NOTIFIER);
@@ -202,6 +221,8 @@ static int __init fsociety_tuner_init(void)
 	if (ret)
 		pr_err("drm notifier: %d\n", ret);
 
+	if (!proc_create_single("cpumaxfreq", 0444, NULL, cpumaxfreq_show))
+		pr_err("/proc/cpumaxfreq failed\n");
 	WRITE_ONCE(ready, true);
 	kick(false);
 	pr_info("profile %s, screen-off cap %u/%u kHz, mglru_lock %d\n", names[profile],

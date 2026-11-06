@@ -1792,6 +1792,30 @@ thermal_temp_state_store(struct device *dev,
 static DEVICE_ATTR(temp_state, 0664,
 		   thermal_temp_state_show, thermal_temp_state_store);
 
+/*
+ * board_sensor_temp: HyperOS reads the board (skin) temperature here (PowerKeeper, SecurityCenter PowerUtils,
+ * ThermalResourceMonitor). On Xiaomi's own vendors mi_thermald writes it; the POCO F1 ports have no mi_thermald, so the
+ * node reports the quiet thermistor (else xo_therm) itself, in millidegrees like a thermal zone. fsociety (UMRSRN).
+ */
+static ssize_t
+thermal_board_sensor_temp_show(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	static const char * const zones[] = { "quiet_therm", "xo_therm" };
+	struct thermal_zone_device *tz;
+	int i, temp;
+
+	for (i = 0; i < ARRAY_SIZE(zones); i++) {
+		tz = thermal_zone_get_zone_by_name(zones[i]);
+		if (!IS_ERR(tz) && !thermal_zone_get_temp(tz, &temp) && temp > -40000)
+			return snprintf(buf, PAGE_SIZE, "%d\n", temp);
+	}
+	return -ENODATA;
+}
+
+static DEVICE_ATTR(board_sensor_temp, 0444,
+		   thermal_board_sensor_temp_show, NULL);
+
 static int create_thermal_message_node(void) {
 	int ret = 0;
 
@@ -1821,12 +1845,17 @@ static int create_thermal_message_node(void) {
 		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_temp_state.attr);
 		if (ret < 0)
 			pr_warn("Thermal: create temp state node failed\n");
+
+		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_board_sensor_temp.attr);
+		if (ret < 0)
+			pr_warn("Thermal: create board sensor temp node failed\n");
 	}
 
 	return ret;
 }
 
 static void destroy_thermal_message_node(void) {
+	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_board_sensor_temp.attr);
 	cancel_delayed_work_sync(&sconfig_notify_work);
 	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_temp_state.attr);
 	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_sconfig.attr);
