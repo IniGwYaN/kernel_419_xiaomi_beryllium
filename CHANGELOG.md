@@ -16,6 +16,28 @@ Two builds from one source: **KSU** (`CONFIG_KSU=y`) and **NonKSU** (no root).
 
 ---
 
+## 20261106
+
+- **Battery % like 4.9 (PMI8998 fuel gauge)** — the known 4.19 F1 bug: % stuck
+  for a long time then dropping fast, or jumping after a reboot. The SOC code is
+  the same as 4.9; four 4.19-only differences were not: MEM_ARB low latency and
+  PEEK_MUX4 left on permanently (PM8150B workarounds), atomic SRAM writes not
+  synced to SOC_UPDATE when DMA is used, step charging + SW JEITA set up only on a
+  profile reload, and a wrong fg pointer in `esr_filter_work`. All four now
+  behave like 4.9 on PMI8998. The Xiaomi SOC smoothing also closes a large
+  shown-vs-real gap faster (quarter steps above 5 %) and lets the shown % drop
+  while charging when it is more than 3 % above the real value.
+- **Fast charge while the battery is cool** — thermal-engine picks the charge
+  level from xo_therm (~41 °C with the screen on), which held PD/PPS chargers to
+  ~5 W. The charge level now follows the battery temperature: full speed below
+  42 °C, capped (level 5, ~2 A input) below 45 °C, stock above. Hardware JEITA
+  still applies. Knobs: `/sys/module/smb_lib/parameters/fastchg_{cool,warm}`
+  (420 / 450, 0 = stock).
+- **HyperOS nodes** — `thermal_message/board_sensor_temp` (board temperature for
+  PowerKeeper / SecurityCenter, from quiet_therm else xo_therm) and
+  `/proc/cpumaxfreq` (About phone CPU clock). On Xiaomi vendors mi_thermald
+  writes the first; the F1 ports have no mi_thermald.
+
 ## 20261105
 
 - **Two builds: Standard and AutoBoost.** New option
