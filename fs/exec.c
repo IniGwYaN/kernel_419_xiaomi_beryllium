@@ -1778,10 +1778,7 @@ static int __do_execve_file(int fd, struct filename *filename,
 
 orig_flow:
 #elif defined(CONFIG_KSU_MANUAL_HOOK)
-	if (unlikely(ksu_execveat_hook))
-		ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
-	else
-		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
+	ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
 #elif defined(CONFIG_KSU)
 	ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
 #endif
