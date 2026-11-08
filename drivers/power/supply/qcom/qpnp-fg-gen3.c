@@ -5834,17 +5834,6 @@ static void fg_battery_soc_smooth_tracking(struct fg_dev *fg)
 
 	soc_changed = min(1, delta_time);
 
-	/*
-	 * AKEDORE: a big gap between the shown and the real FG SOC (e.g. the
-	 * PMIC re-estimated SOC from a charging-inflated voltage at boot, or
-	 * msoc caught up after a hot session) closed at 1 % per 30-60 s and
-	 * never downward while charging, so a wrong number stayed on screen
-	 * for an hour. Close a gap > 5 % in quarter steps.
-	 */
-	if (soc_changed && last_batt_soc >= 0 &&
-	    abs(last_batt_soc - fg->param.batt_raw_soc) > 5)
-		soc_changed = abs(last_batt_soc - fg->param.batt_raw_soc) / 4;
-
 	if (last_batt_soc >= 0) {
 		if (last_batt_soc < fg->param.batt_raw_soc &&
 					fg->param.batt_ma < 0)
@@ -5857,12 +5846,6 @@ static void fg_battery_soc_smooth_tracking(struct fg_dev *fg)
 					&& fg->param.batt_ma > 0)
 		  /* Battery in discharging status
 		   * update the soc when resuming device
-		   */
-			last_batt_soc = fg->param.update_now ?
-			  fg->param.batt_raw_soc : last_batt_soc - soc_changed;
-		else if (last_batt_soc > fg->param.batt_raw_soc + 3)
-		  /* shown SOC above the real one while charging: never hold a
-		   * false high value just because current flows in
 		   */
 			last_batt_soc = fg->param.update_now ?
 			  fg->param.batt_raw_soc : last_batt_soc - soc_changed;

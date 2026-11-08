@@ -534,8 +534,13 @@ static void msm_restart_prepare(const char *cmd)
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
 		} else {
+			qpnp_pon_set_restart_reason(PON_RESTART_REASON_UNKNOWN);
 			__raw_writel(0x77665501, restart_reason);
 		}
+	} else {
+		/* plain reboot: tell the bootloader it is a normal restart */
+		qpnp_pon_set_restart_reason(PON_RESTART_REASON_UNKNOWN);
+		__raw_writel(0x77665501, restart_reason);
 	}
 
 	flush_cache_all();
@@ -588,7 +593,19 @@ static void do_msm_restart(enum reboot_mode reboot_mode, const char *cmd)
 	halt_spmi_pmic_arbiter();
 	deassert_ps_hold();
 
-	msleep(10000);
+	/*
+	 * Interrupts are off here, so msleep() can't be used. Give the PMIC
+	 * 3 s to finish its reset sequence; if PS_HOLD did not reset the SoC,
+	 * bite the watchdog instead of returning to "Reboot failed -- System
+	 * halted" (3 s as in Abdelrahman's A17 d38172eb3c21).
+	 */
+	mdelay(3000);
+	pr_emerg("PS_HOLD reset failed, triggering watchdog bite\n");
+	msm_trigger_wdog_bite();
+
+	pr_emerg("All reset stages failed, spinning\n");
+	while (1)
+		mdelay(1000);
 }
 
 static void do_msm_poweroff(void)

@@ -113,7 +113,8 @@ enum hvdcp3_type {
 
 /* QC2.0 voltage UV threshold 7.8V */
 #define QC2_HVDCP_VOL_UV_THR		7800000
-#define CHECK_VBUS_WORK_DELAY_MS		10
+/* QC2 needs time to step up to 9V; 10 ms always saw 5V and forced 5V/1.8A (A17 92fac9c0) */
+#define CHECK_VBUS_WORK_DELAY_MS		2500
 #define UNSTANDARD_HVDCP2_UA		1800000
 #endif
 
@@ -492,6 +493,7 @@ struct smb_charger {
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 	bool			ignore_recheck_flag;
 	bool			check_vbus_once;
+	int			vbus_retry_count;
 	bool			unstandard_hvdcp;
 	bool			use_ext_boost;
 #endif

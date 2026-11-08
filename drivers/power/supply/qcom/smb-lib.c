@@ -45,6 +45,7 @@ EXPORT_SYMBOL(bypass_charge_set_active);
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 static bool off_charge_flag;
 static void smblib_wireless_set_enable(struct smb_charger *chg, int enable);
+static void smblib_notify_device_mode(struct smb_charger *chg, bool enable);
 #endif
 
 static bool is_secure(struct smb_charger *chg, int addr)
@@ -1427,7 +1428,7 @@ static int __smblib_set_prop_typec_power_role(struct smb_charger *chg,
 				     const union power_supply_propval *val)
 {
 	int rc = 0;
-	u8 power_role;
+	u8 power_role, ctrl;
 
 	switch (val->intval) {
 	case POWER_SUPPLY_TYPEC_PR_NONE:
@@ -1450,6 +1451,24 @@ static int __smblib_set_prop_typec_power_role(struct smb_charger *chg,
 	if (power_role != TYPEC_DISABLE_CMD_BIT) {
 		if (chg->ufp_only_mode)
 			power_role = UFP_EN_CMD_BIT;
+	}
+
+	/*
+	 * Writing the same role again restarts the Type-C state machine and
+	 * can generate another CC interrupt, which is how a Try.SNK retry
+	 * turns into a self-sustaining flap.  Skip the write when the role
+	 * already matches; the PBS workaround below is likewise idempotent.
+	 */
+	rc = smblib_read(chg, TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG, &ctrl);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't read TYPE_C_INTRPT_ENB_SOFTWARE_CTRL rc=%d\n",
+			rc);
+		return rc;
+	}
+
+	if ((ctrl & TYPEC_POWER_ROLE_CMD_MASK) == power_role) {
+		smblib_dbg(chg, PR_MISC, "power_role already %d\n", power_role);
+		return 0;
 	}
 
 	if (chg->wa_flags & TYPEC_PBS_WA_BIT) {
@@ -3473,10 +3492,27 @@ static int smblib_get_prop_dfp_mode(struct smb_charger *chg)
 
 static int smblib_get_prop_typec_mode(struct smb_charger *chg)
 {
+	int typec_mode;
+
 	if (chg->typec_status[3] & UFP_DFP_MODE_STATUS_BIT)
-		return smblib_get_prop_dfp_mode(chg);
+		typec_mode = smblib_get_prop_dfp_mode(chg);
 	else
-		return smblib_get_prop_ufp_mode(chg);
+		typec_mode = smblib_get_prop_ufp_mode(chg);
+
+	/*
+	 * CC_ATTACHED means a CC pin is attached and orientation is known.
+	 * It is clear for an Rd-Rd/Ra-Ra debug accessory even though the DFP
+	 * status bits are valid, and typec_try_sink() relies on seeing that
+	 * mode to skip Try.SNK for such partners. Apply the filter only to the
+	 * two modes that carry real VBUS so a stale Rd/Rd status does not keep
+	 * a disconnected port alive.
+	 */
+	if (!(chg->typec_status[3] & CC_ATTACHED_BIT) &&
+	    (typec_mode == POWER_SUPPLY_TYPEC_SINK ||
+	     typec_mode == POWER_SUPPLY_TYPEC_SINK_POWERED_CABLE))
+		return POWER_SUPPLY_TYPEC_NONE;
+
+	return typec_mode;
 }
 
 int smblib_get_prop_typec_power_role(struct smb_charger *chg,
@@ -3614,7 +3650,7 @@ int smblib_get_prop_die_health(struct smb_charger *chg,
 #define CDP_CURRENT_UA			1500000
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 #define DCP_CURRENT_UA			1800000
-#define HVDCP2_CURRENT_UA		1500000
+#define HVDCP2_CURRENT_UA		2000000	/* 9V x 2A = 18W (A17 0db7a807) */
 #define HVDCP3_CURRENT_UA		2750000
 #else
 #define DCP_CURRENT_UA			1500000
@@ -4550,6 +4586,14 @@ static void smblib_cc_float_charge_work(struct work_struct *work)
 	if (usb_present
 			&& (chg->typec_mode == POWER_SUPPLY_TYPEC_NONE)
 			&& (chg->cc_float_detected == false)) {
+		if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB ||
+		    chg->real_charger_type == POWER_SUPPLY_TYPE_USB_CDP) {
+			if (!chg->otg_present)
+				smblib_notify_device_mode(chg, true);
+			power_supply_changed(chg->usb_psy);
+			return;
+		}
+
 		chg->cc_float_detected = true;
 		chg->real_charger_type = POWER_SUPPLY_TYPE_USB_DCP;
 		chg->usb_psy_desc.type = POWER_SUPPLY_TYPE_USB_DCP;
@@ -4585,6 +4629,19 @@ static void smblib_check_vbus_work(struct work_struct *work)
 				/* enable hardware INOV again */
 				vote(chg->hvdcp_hw_inov_dis_votable,
 						UNSTANDARD_QC2_VOTER, false, 0);
+				chg->vbus_retry_count = 0;
+			} else if (chg->vbus_retry_count < 2) {
+				/* slow adapter: ask for 9V again before giving up on QC2 */
+				chg->vbus_retry_count++;
+				pr_info("VBUS %d, waiting for 9V step-up (retry %d)\n",
+					val.intval, chg->vbus_retry_count);
+				rc = smblib_masked_write(chg, CMD_HVDCP_2_REG,
+						FORCE_9V_BIT, FORCE_9V_BIT);
+				if (rc < 0)
+					smblib_err(chg,
+						"Couldn't force 9V HVDCP rc=%d\n", rc);
+				schedule_delayed_work(&chg->check_vbus_work,
+						msecs_to_jiffies(1000));
 			} else {
 				pr_info("set adapter allowance to 5V and force 5V charge\n");
 				rc = smblib_masked_write(chg, CMD_HVDCP_2_REG,
@@ -4779,9 +4836,14 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 	} else {
 		chg->pc_port_seen = false;
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-		cancel_delayed_work_sync(&chg->typec_reenable_work);
+		/* under chg->lock: no _sync, the work takes the same lock */
+		cancel_delayed_work(&chg->typec_reenable_work);
+		cancel_delayed_work_sync(&chg->cc_float_charge_work);
 		cancel_delayed_work_sync(&chg->charger_type_recheck);
 		chg->ignore_recheck_flag = false;
+		if (chg->cc_float_detected)
+			smblib_notify_device_mode(chg, false);
+		chg->cc_float_detected = false;
 #endif
 		if (chg->fake_usb_insertion) {
 			chg->fake_usb_insertion = false;
@@ -5085,6 +5147,9 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 	apsd_result = smblib_get_apsd_result(chg);
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
+	/* QC charger authenticated: no PD negotiation (and no PD hard reset) on it */
+	vote(chg->pd_disallowed_votable_indirect, HVDCP_TIMEOUT_VOTER, true, 0);
+
 	if (apsd_result->pst == POWER_SUPPLY_TYPE_USB_HVDCP) {
 		/* disable hardware INOV and force HVDCP2 to 9V */
 		if (!chg->check_vbus_once) {
@@ -5128,10 +5193,10 @@ static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
 {
 	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
 
-	/* Hold off PD only until hvdcp 2.0 detection timeout */
+	/* Hold off PD until hvdcp timeout; disallow PD if QC charger detected */
 	if (rising) {
 		vote(chg->pd_disallowed_votable_indirect, HVDCP_TIMEOUT_VOTER,
-								false, 0);
+								qc_charger, 0);
 
 		/* enable HDC and ICL irq for QC2/3 charger */
 		if (qc_charger)
@@ -5220,7 +5285,7 @@ static void smblib_force_legacy_icl(struct smb_charger *chg, int pst)
 		break;
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-		vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 1500000);
+		vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, HVDCP2_CURRENT_UA);
 		break;
 #endif
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
@@ -5559,7 +5624,7 @@ try_wait_src:
 
 	debounce_done = stat & TYPEC_DEBOUNCE_DONE_STATUS_BIT;
 
-	if (debounce_done)
+	if (debounce_done && (stat & CC_ATTACHED_BIT))
 		/* the other side wants to be a sink */
 		exit_mode = ATTACHED_SRC;
 	else
@@ -5591,11 +5656,13 @@ static void typec_sink_insertion(struct smb_charger *chg)
 	exit_mode = typec_try_sink(chg);
 
 	if (exit_mode != ATTACHED_SRC) {
-		smblib_usb_typec_change(chg);
+		chg->typec_present = false;
 		return;
 	}
 
 	typec_mode = smblib_get_prop_typec_mode(chg);
+	if (typec_mode == POWER_SUPPLY_TYPEC_NONE)
+		return;
 	if (typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)
 		chg->is_audio_adapter = true;
 
@@ -5605,8 +5672,11 @@ static void typec_sink_insertion(struct smb_charger *chg)
 	vote(chg->pd_disallowed_votable_indirect, HVDCP_TIMEOUT_VOTER,
 			false, 0);
 	if (chg->use_extcon) {
-		smblib_notify_usb_host(chg, true);
-		chg->otg_present = true;
+		if (typec_mode != POWER_SUPPLY_TYPEC_NONE &&
+		    typec_mode != POWER_SUPPLY_TYPEC_NON_COMPLIANT) {
+			smblib_notify_usb_host(chg, true);
+			chg->otg_present = true;
+		}
 	}
 }
 
@@ -5711,6 +5781,7 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	chg->report_usb_absent = false;
 	chg->check_vbus_once = false;
 	chg->unstandard_hvdcp = false;
+	chg->vbus_retry_count = 0;
 #endif
 
 	/* write back the default FLOAT charger configuration */
@@ -5913,12 +5984,20 @@ static void smblib_handle_typec_cc_state_change(struct smb_charger *chg)
 	if (chg->pr_swap_in_progress)
 		return;
 
+	typec_mode = smblib_get_prop_typec_mode(chg);
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-	cancel_delayed_work_sync(&chg->typec_reenable_work);
+	/*
+	 * Callers hold chg->lock and typec_reenable_work takes it too, so a
+	 * _sync cancel here can deadlock the CC IRQ thread against the work.
+	 * The work re-checks the state under the lock. Keep it queued while
+	 * VBUS is up and Type-C still sees nothing: that is the replug case
+	 * it exists for, and a stray CC IRQ used to cancel it.
+	 */
+	if (!usb_present || typec_mode != POWER_SUPPLY_TYPEC_NONE)
+		cancel_delayed_work(&chg->typec_reenable_work);
 	cancel_delayed_work_sync(&chg->cc_float_charge_work);
 #endif
 
-	typec_mode = smblib_get_prop_typec_mode(chg);
 	if (chg->typec_present && (typec_mode != chg->typec_mode))
 		smblib_handle_rp_change(chg, typec_mode);
 
@@ -6838,30 +6917,38 @@ static void smblib_typec_reenable_work(struct work_struct *work)
 		goto unlock;
 	}
 
-	//0x130E, just bit6 Vbus is set, typec status no change
-	if (stat == TYPEC_VBUS_STATUS_BIT) {
-		smblib_dbg(chg, PR_MISC, "running typec reenable workaround\n");
-	rc = smblib_masked_write(chg,
+	/*
+	 * VBUS is up but Type-C has not attached (0x130E used to be checked
+	 * for "VBUS bit only"; any other stale bit skipped the workaround).
+	 */
+	if ((stat & TYPEC_VBUS_STATUS_BIT) &&
+	    chg->typec_mode == POWER_SUPPLY_TYPEC_NONE) {
+		pr_info("PMI: VBUS without Type-C attach, re-enabling Type-C\n");
+		rc = smblib_masked_write(chg,
 				TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
 				TYPEC_DISABLE_CMD_BIT,
 				TYPEC_DISABLE_CMD_BIT);
-	if (rc < 0)
-		smblib_err(chg, "Couldn't disable type-c rc=%d\n", rc);
+		if (rc < 0)
+			smblib_err(chg, "Couldn't disable type-c rc=%d\n", rc);
 
-	msleep(200);
+		msleep(200);
 
-	rc = smblib_masked_write(chg,
+		rc = smblib_masked_write(chg,
 				TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
 				TYPEC_DISABLE_CMD_BIT, 0);
-	if (rc < 0)
-		smblib_err(chg, "Couldn't enable type-c rc=%d\n", rc);
+		if (rc < 0)
+			smblib_err(chg, "Couldn't enable type-c rc=%d\n", rc);
 
-	/* wait for type-c detection to complete */
-	//msleep(100);
+		/*
+		 * Wait out tCCDebounce, then resync the Type-C state in case
+		 * the attach raised no IRQ. Safe now: no path cancels this
+		 * work with _sync while holding chg->lock.
+		 */
+		msleep(200);
+		smblib_usb_typec_change(chg);
 	}
 
 unlock:
-	//smblib_usb_typec_change(chg);
 	mutex_unlock(&chg->lock);
 
 	schedule_delayed_work(&chg->cc_float_charge_work,

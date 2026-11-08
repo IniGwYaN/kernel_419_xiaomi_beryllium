@@ -3082,7 +3082,8 @@ skip_update:
 	 * wide resume without usb cable connected. This flag is set
 	 * only in case of power event irq in lpm.
 	 */
-	if (mdwc->resume_pending) {
+	if (mdwc->resume_pending ||
+	    (mdwc->vbus_active && atomic_read(&dwc->in_lpm))) {
 		dwc3_msm_resume(mdwc);
 		mdwc->resume_pending = false;
 	}
@@ -3423,7 +3424,9 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 		mdwc->eud_active = event;
 		mdwc->check_eud_state = true;
 	} else {
-		if (mdwc->vbus_active == event)
+		/* a repeated VBUS-on while still in LPM must wake the core */
+		if (mdwc->vbus_active == event &&
+		    !(event && atomic_read(&dwc->in_lpm)))
 			return NOTIFY_DONE;
 		mdwc->vbus_active = event;
 	}
