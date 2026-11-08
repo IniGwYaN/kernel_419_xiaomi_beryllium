@@ -21,6 +21,7 @@
 #ifdef CONFIG_KSU_SUSFS
 #include <linux/susfs_def.h>
 #include <linux/version.h>
+#include "internal.h"	/* filename_lookup() */
 #endif
 #include <linux/uaccess.h>
 #include <asm/unistd.h>
@@ -158,6 +159,11 @@ EXPORT_SYMBOL(vfs_getattr);
  *
  * 0 will be returned on success, and a -ve error code if unsuccessful.
  */
+#ifdef CONFIG_KSU_SUSFS
+extern struct static_key_true ksu_is_init_rc_hook_enabled;
+extern void ksu_handle_vfs_fstat(int fd, loff_t *kstat_size_ptr);
+#endif
+
 int vfs_statx_fd(unsigned int fd, struct kstat *stat,
 		 u32 request_mask, unsigned int query_flags)
 {
@@ -171,6 +177,10 @@ int vfs_statx_fd(unsigned int fd, struct kstat *stat,
 	if (f.file) {
 		error = vfs_getattr(&f.file->f_path, stat,
 				    request_mask, query_flags);
+#ifdef CONFIG_KSU_SUSFS
+		if (static_branch_unlikely(&ksu_is_init_rc_hook_enabled))
+			ksu_handle_vfs_fstat(fd, &stat->size);
+#endif
 		fdput(f);
 	}
 	return error;
@@ -178,13 +188,9 @@ int vfs_statx_fd(unsigned int fd, struct kstat *stat,
 EXPORT_SYMBOL(vfs_statx_fd);
 
 #ifdef CONFIG_KSU_SUSFS
-extern bool ksu_su_compat_enabled;
+extern struct static_key_true ksu_su_compat_enabled;
 extern bool __ksu_is_allow_uid_for_current(uid_t uid);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 extern int ksu_handle_stat(int *dfd, struct filename **filename, int *flags);
-#else
-extern int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags);
-#endif
 #elif defined(CONFIG_KSU_MANUAL_HOOK) || defined(CONFIG_KSU)
 extern int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags);
 #endif
@@ -211,18 +217,11 @@ int vfs_statx(int dfd, const char __user *filename, int flags,
 	struct path path;
 	int error = -EINVAL;
 	unsigned int lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
-
 #ifdef CONFIG_KSU_SUSFS
-	if (likely(susfs_is_current_proc_no_su()))
-		goto orig_flow;
+	struct filename *fname = NULL;
+#endif
 
-	if (likely(ksu_su_compat_enabled)) {
-		if (unlikely(__ksu_is_allow_uid_for_current(current_uid().val)))
-			ksu_handle_stat(&dfd, &filename, &flags);
-	}
-
-orig_flow:
-#elif defined(CONFIG_KSU_MANUAL_HOOK) || defined(CONFIG_KSU)
+#if !defined(CONFIG_KSU_SUSFS) && (defined(CONFIG_KSU_MANUAL_HOOK) || defined(CONFIG_KSU))
 	ksu_handle_stat(&dfd, &filename, &flags);
 #endif
 
@@ -238,7 +237,23 @@ orig_flow:
 		lookup_flags |= LOOKUP_EMPTY;
 
 retry:
+#ifdef CONFIG_KSU_SUSFS
+	fname = getname_flags(filename, lookup_flags, NULL);
+
+	if (likely(susfs_is_current_proc_no_su()))
+		goto orig_flow;
+
+	if (static_branch_likely(&ksu_su_compat_enabled)) {
+		if (unlikely(__ksu_is_allow_uid_for_current(current_uid().val)))
+			ksu_handle_stat(&dfd, &fname, &flags);
+	}
+
+orig_flow:
+	error = filename_lookup(dfd, fname, lookup_flags, &path, NULL);
+	/* filename_lookup() does the putname(fname) */
+#else
 	error = user_path_at(dfd, filename, lookup_flags, &path);
+#endif
 	if (error)
 		goto out;
 
@@ -423,10 +438,7 @@ SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
 }
 #endif
 
-#ifdef CONFIG_KSU_MANUAL_HOOK
-extern bool ksu_init_rc_hook;
-extern void ksu_handle_newfstat_ret(unsigned int *fd, struct stat __user **statbuf_ptr);
-#elif defined(CONFIG_KSU) && !defined(CONFIG_KSU_SUSFS) && !defined(CONFIG_KSU_KPROBES_KSUD)
+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_SUSFS) && !defined(CONFIG_KSU_KPROBES_KSUD)
 /* backslashxx/KernelSU: plain source hooks, setuid via its LSM hooks */
 extern void ksu_handle_newfstat_ret(unsigned int *fd, struct stat __user **statbuf_ptr);
 #endif
@@ -438,11 +450,7 @@ SYSCALL_DEFINE2(newfstat, unsigned int, fd, struct stat __user *, statbuf)
 
 	if (!error)
 		error = cp_new_stat(&stat, statbuf);
-#ifdef CONFIG_KSU_MANUAL_HOOK
-	/* A17 init reads init.rc only up to st_size: grow it by the ksu rc */
-	if (!error && unlikely(ksu_init_rc_hook))
-		ksu_handle_newfstat_ret(&fd, &statbuf);
-#elif defined(CONFIG_KSU) && !defined(CONFIG_KSU_SUSFS) && !defined(CONFIG_KSU_KPROBES_KSUD)
+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_SUSFS) && !defined(CONFIG_KSU_KPROBES_KSUD)
 	ksu_handle_newfstat_ret(&fd, &statbuf);
 #endif
 
