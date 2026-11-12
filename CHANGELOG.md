@@ -16,6 +16,25 @@ Two builds from one source: **KSU** (`CONFIG_KSU=y`) and **NonKSU** (no root).
 
 ---
 
+## 20261108 - 20261109 (v1)
+
+- **Version name**: uname reads `5.10.245-akedore-v1-KSU-SUSFS` (`-v1-KSU`,
+  `-v1-NonKSU`). The real kernel is 4.19.325. The `5.10.245` text is Aozora's
+  Makefile spoof (`KERNELVERSION = 5.10.245`, commit 1caca3f39a19 by Kaiyaa77),
+  kept as it is. Only the version text is changed.
+- **Root**: KernelSU 32704 replaced by ReSukiSU v4.2.0-rc3 (35171, UAPI 4).
+  The old KernelSU 32704 text in the sections below is history.
+- **SUSFS**: ReSukiSU inline hooks for SUSFS v2.3.0 (static keys).
+- **TEST-20261108**: Jiro features, plus USB, reboot and QC fixes made for
+  the Broken Heart reports.
+- `FUSE_BPF` off in the defconfig.
+- **NetHunter**: rtl8812au (88XXau) Wi-Fi driver added.
+- **Charging**: FCC 3.3 A (Infinity-X parity).
+- Status: reboot fix tested on device. Battery jump and USB fixes are
+  mitigations, not proven on every phone.
+
+---
+
 ## 20261106
 
 - **Battery % like 4.9 (PMI8998 fuel gauge)** — the known 4.19 F1 bug: % stuck

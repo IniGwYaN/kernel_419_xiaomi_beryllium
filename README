@@ -9,18 +9,28 @@ AKEDORE kernel 4.19 for POCO F1 (beryllium)
 Builds
 ------
 
-  KSU        KernelSU 32704 (official KernelSU manager, 32704)
+  KSU        ReSukiSU v4.2.0-rc3 (35171), with or without SUSFS v2.3.0
   NoSU       no root (for Magisk or no root)
 
   Standard   GPU stock 710 MHz
   AutoBoost  GPU 710 MHz, boosted to 802 MHz while gaming
 
-  Latest: 20261105, AKEDORE-4.19-<KSU|NoSU>-<Standard|AutoBoost>-*.zip
-  Version text: 5.10.245-akedore-umrsrn-v1-KSU (Standard) or
-  -v1-AutoBoost-KSU; -NonKSU for NoSU.
-  (5.10.245 is Aozora's spoof, the real base is 4.19.325).
+  Latest source: v1, branch akedore. The GitHub release page still has
+  the 20261105 zips (AKEDORE-4.19-<KSU|NoSU>-<Standard|AutoBoost>-*.zip).
+  v1 test zips (KSU-SUSFS, KSU, NoSU) are shared in the Telegram group.
 
-  Tested on: OxygenOS 16 port (A16), PixelOS 17 and RestOS 17 (A17).
+  Tested on: OxygenOS 16 port (A16), PixelOS 17 and RestOS 17 (A17),
+  Infinity-X 4.1 (A17).
+
+Version name (why it says 5.10.245)
+-----------------------------------
+
+  uname shows 5.10.245-akedore-v1-KSU, but this is a 4.19 kernel.
+  The real base is Linux 4.19.325. The 5.10.245 text comes from Aozora:
+  its top Makefile sets KERNELVERSION = 5.10.245 (commit 1caca3f39a19
+  by Kaiyaa77, "Makefile: spoof KERNELVERSION string to 5.10.245").
+  We kept it as it is and only changed the suffix. Nothing else in the
+  kernel is 5.10. Only the version text is changed, not the code.
 
 Install
 -------
@@ -38,8 +48,10 @@ Fixes
   - USB file transfer menu on PD laptop ports: fixed.
   - Chrome/Brave crash and bpfloader bootloop on Android 17: fixed.
   - Vibrations >= 1 s, QC2 thermal typo, PD/PPS charging at 25 mA.
-  - Battery jumps / shutdown with charge left: fix included, not
-    fully tested yet.
+  - Battery jumps / shutdown with charge left: fuel gauge fix included
+    (4.9 parity), not proven on the affected phones yet.
+  - Also in v1: Jiro features, USB / reboot / QC fixes, NetHunter
+    Wi-Fi driver (rtl8812au), FCC 3.3 A like Infinity-X.
 
 Extras
 ------
@@ -61,6 +73,8 @@ Credits
   Kaiyaa77 (@Kaiyaa77Ar)      Aozora 4.19 base
   Kyy (@kyzuna28)             Kyzuna dtsi
   tiann, backslashxx          KernelSU
+  ReSukiSU team               ReSukiSU
+  simonpunk                   SUSFS
   diphons                     SDM845 4.19 port
   LineageOS / Bruno Martins   warm reboot
   Sultan Alsawaf              cycle count, UFS pm_qos
