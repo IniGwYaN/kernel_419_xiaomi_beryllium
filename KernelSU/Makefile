@@ -13,7 +13,7 @@ endif
 ifeq ($(CONFIG_KSU_SUSFS), y)
 ## As we are building gki only, no KBUILD_EXTMOD is needed
 ## Since there is still a build error for 6.12 as $(src) returns absolute path, so here we just hardcode it
-ccflags-y += -I$(srctree)/drivers/kernelsu -I$(srctree)/drivers/kernelsu/include
+ccflags-y += -I$(KSU_KERNEL_DIR) -I$(KSU_KERNEL_DIR)/include
 else
 ccflags-y += -I$(KSU_KERNEL_DIR) -I$(KSU_KERNEL_DIR)/include
 endif
