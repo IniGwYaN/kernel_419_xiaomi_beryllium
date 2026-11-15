@@ -1,6 +1,13 @@
 ======================================
         AKEDORE kernel  4.19
 ======================================
+  Device  : POCO F1 (beryllium)
+  ROM     : any 4.19 ROM
+  Build   : v1 NoSU
+  Root    : none (SukiSU Ultra)
+  Profile : Balanced + game boost
+  Commit  : akedore-next a5c8ce46c
+--------------------------------------
   Credits
    Kaiyaa77          Aozora 4.19 base
    Kyy (kyzuna28)    dtsi
@@ -14,5 +21,6 @@
    Kyy (kyzuna28)    AK3 template
    osm0sis           AnyKernel3
 --------------------------------------
+  build by UMRSRN
   remake by YAN
 ======================================
