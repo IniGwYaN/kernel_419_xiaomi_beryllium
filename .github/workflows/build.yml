@@ -1,0 +1,59 @@
+name: Build AKEDORE 4.19 (beryllium)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [akedore]
+    paths:
+      - 'arch/arm64/boot/dts/**'
+      - 'arch/arm64/configs/**'
+      - 'drivers/android/**'
+      - 'KernelSU/**'
+      - 'include/linux/susfs.h'
+      - 'fs/read_write.c'
+      - 'kernel/fork.c'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup toolchain (Neutron clang)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+            libarchive-tools file zstd bc cpio kmod python3 \
+            llvm lld clang make libssl-dev flex bison perl \
+            libelf-dev libncurses-dev openssl
+          cd /tmp
+          wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/06092026/neutron-clang-06092026.tar.zst
+          mkdir -p neutron
+          tar --use-compress-program=unzstd -xf neutron-clang-06092026.tar.zst -C neutron
+          echo "CLANG_DIR=/tmp/neutron" >> $GITHUB_ENV
+          echo "/tmp/neutron/bin" >> $GITHUB_PATH
+
+      - name: Build kernel
+        run: |
+          chmod +x build_akedore.sh
+          PROFILE=std ./build_akedore.sh ksu
+
+      - name: Package AnyKernel3 zip
+        run: |
+          set -e
+          AK3=anykernel3
+          cp out/arch/arm64/boot/Image.gz-dtb $AK3/Image.gz-dtb
+          cd $AK3
+          sed -i 's/kernel.string=AKEDORE kernel 4.19 v1 NoSU UMUM/kernel.string=AKEDORE kernel 4.19 v1 KSU (SukiSU Ultra + SUSFS 2.4.0 + Simple LMK)/' anykernel.sh
+          zip -r9 ../AKEDORE-4.19-ksu-flashable.zip . -x '*.git*'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AKEDORE-4.19-ksu
+          path: AKEDORE-4.19-ksu-flashable.zip

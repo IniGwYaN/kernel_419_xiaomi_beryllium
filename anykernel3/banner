@@ -1,0 +1,25 @@
+======================================
+        AKEDORE kernel  4.19
+======================================
+  Device  : POCO F1 (beryllium)
+  ROM     : any 4.19 ROM
+  Build   : v1 NoSU
+  Root    : none (NonKSU)
+  Profile : Balanced + game boost
+  Commit  : akedore-next a5c8ce46c
+--------------------------------------
+  Credits
+   Kaiyaa77          Aozora 4.19 base
+   Kyy (kyzuna28)    dtsi
+   diphons           SDM845 4.19 port
+   Bruno Martins     warm reboot
+   Sultan Alsawaf    UFS + cycle count
+   S. Fomichev       BPF bind patch
+   jiro28            B-Labs fixes/DT2W
+   Yu Zhao           MGLRU fixes
+   Abdelrahman M.    USB/reboot/QC fix
+   Kyy (kyzuna28)    AK3 template
+   osm0sis           AnyKernel3
+--------------------------------------
+  build by UMRSRN
+======================================
