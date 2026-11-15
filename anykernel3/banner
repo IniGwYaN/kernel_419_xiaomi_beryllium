@@ -1,9 +1,9 @@
 ======================================
-        AKEDORE kernel  4.19
+        AKEDORE kernel remake 4.19
 ======================================
   Device  : POCO F1 (beryllium)
   ROM     : any 4.19 ROM
-  Build   : v1 NoSU
+  Build   : v1
   Root    : none (SukiSU Ultra)
   Profile : Balanced + game boost
   Commit  : akedore-next a5c8ce46c
