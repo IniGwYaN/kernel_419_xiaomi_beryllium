@@ -1634,14 +1634,8 @@ module_param(gpu_boosted, bool, 0444);
 
 static unsigned int fsoc_ceiling(struct kgsl_pwrctrl *pwr)
 {
-	switch (fsociety_profile()) {
-	case FSOC_ECO:
-		return pwr->fsoc_eco_level;
-	case FSOC_GAME:
-		return 0;
-	default:
-		return READ_ONCE(gpu_boosted) ? 0 : pwr->fsoc_std_level;
-	}
+	/* akedore: always allow the top GPU level (805 MHz on SDM845 v2) */
+	return 0;
 }
 
 /* devfreq max_freq set by userspace (power HAL GPUMaxFreq) when it is below the top level, else 0 */
