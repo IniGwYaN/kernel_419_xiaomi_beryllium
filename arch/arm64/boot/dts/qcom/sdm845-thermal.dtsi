@@ -83,6 +83,7 @@
 
 &thermal_zones {
 	aoss0-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-governor = "user_space";
@@ -182,6 +183,7 @@
 	};
 
 	kryo-l3-0-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 5>;
@@ -197,6 +199,7 @@
 	};
 
 	kryo-l3-1-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens0 6>;
@@ -338,6 +341,7 @@
 	};
 
 	aoss1-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 0>;
@@ -353,6 +357,7 @@
 	};
 
 	mdm-dsp-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 1>;
@@ -370,6 +375,7 @@
 
 
 	ddr-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 2>;
@@ -385,6 +391,7 @@
 	};
 
 	wlan-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 3>;
@@ -400,6 +407,7 @@
 	};
 
 	compute-hvx-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 4>;
@@ -415,6 +423,7 @@
 	};
 
 	camera-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 5>;
@@ -430,6 +439,7 @@
 	};
 
 	mmss-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 6>;
@@ -445,6 +455,7 @@
 	};
 
 	mdm-core-usr {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&tsens1 7>;
@@ -460,6 +471,7 @@
 	};
 
 	gpu-virt-max-step {
+	disable-thermal-zone;
 		polling-delay-passive = <10>;
 		polling-delay = <100>;
 		thermal-governor = "step_wise";
@@ -481,6 +493,7 @@
 	};
 
 	silv-virt-max-step {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-governor = "step_wise";
@@ -495,6 +508,7 @@
 	};
 
 	gold-virt-max-step {
+	disable-thermal-zone;
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-governor = "step_wise";
