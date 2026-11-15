@@ -10,6 +10,12 @@
 #include <linux/sched/coredump.h> /* MMF_* */
 #include <linux/mm.h> /* VM_FAULT* */
 
+static inline unsigned long get_total_mm_pages(struct mm_struct *mm)
+{
+	return get_mm_counter(mm, MM_ANONPAGES) +
+	       get_mm_counter(mm, MM_FILEPAGES);
+}
+
 struct zonelist;
 struct notifier_block;
 struct mem_cgroup;

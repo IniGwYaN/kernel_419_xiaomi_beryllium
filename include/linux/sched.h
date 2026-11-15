@@ -1545,6 +1545,7 @@ struct task_struct {
 	ANDROID_KABI_RESERVE(7);
 #endif
 	ANDROID_KABI_RESERVE(8);
+	struct task_struct *simple_lmk_next;
 
 	/*
 	 * New fields for task_struct should be added above here, so that
