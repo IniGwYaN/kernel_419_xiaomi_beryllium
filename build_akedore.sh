@@ -17,10 +17,10 @@ export KCFLAGS="-Wno-error"
 $M beryllium_defconfig
 if [ $VARIANT = ksu ]; then
   # backslashxx/KernelSU 32704 (official-compatible): source hooks + LSM hooks, no kprobes / branch-link / syscall-table tricks
-  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-akedore-umrsrn-v1$ED-KSU" $AB FSOCIETY_GPU_AUTOBOOST -e KSU -e KSU_LSM_SECURITY_HOOKS \
+  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-akedore-remake$ED-KSU" $AB FSOCIETY_GPU_AUTOBOOST -e KSU -e KSU_LSM_SECURITY_HOOKS \
     -d KSU_KPROBES_KSUD -d KSU_HACK_ARM64_BRANCH_LINK -d KSU_TAMPER_SYSCALL_TABLE
 else
-  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-akedore-umrsrn-v1$ED-NonKSU" $AB FSOCIETY_GPU_AUTOBOOST -d KSU
+  "$S/scripts/config" --file "$S/$O/.config" --set-str LOCALVERSION "-akedore-remake$ED-NonKSU" $AB FSOCIETY_GPU_AUTOBOOST -d KSU
 fi
 $M olddefconfig
 $M
