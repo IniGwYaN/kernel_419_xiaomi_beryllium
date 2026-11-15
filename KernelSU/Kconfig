@@ -132,6 +132,20 @@ config KSU_SUSFS_PRIORITY_UID_FILTER
 	  - Allow hiding user-defined uids from syscalls like getpriority/setpriority/ioprio_get/ioprio_set.
 	  - Effective on all processes with uid >= 10000.
 
+config KSU_SUSFS_SELINUX
+	bool "Enable to hide selinux modifications"'
+	depends on KSU_SUSFS
+	default y
+	help
+	  - Allow hiding selinux modifications from some detections.
+
+config KSU_SUSFS_SET_AVC_LOG_SPOOFING
+	bool "Enable to spoof avc log"
+	depends on KSU_SUSFS
+	default y
+	help
+	  - Allow spoofing avc log.
+
 endmenu
 
 endmenu
