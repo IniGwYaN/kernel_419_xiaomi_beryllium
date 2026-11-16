@@ -18,6 +18,9 @@
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/fb.h>
+#include <linux/genhd.h>
+#include <linux/blkdev.h>
+extern int elv_iosched_store(struct request_queue *, const char *);
 
 #define MAPLE_IOSCHED_PATCHLEVEL	(8)
 
@@ -449,6 +452,18 @@ static void __exit maple_exit(void)
 	/* Unregister elevator */
 	elv_unregister(&iosched_maple);
 }
+
+static int __init maple_force_all(void)
+{
+	struct gendisk *disk;
+
+	for_each_gendisk(disk) {
+		if (disk->queue)
+			elv_iosched_store(disk->queue, "maple");
+	}
+	return 0;
+}
+late_initcall(maple_force_all);
 
 module_init(maple_init);
 module_exit(maple_exit);
