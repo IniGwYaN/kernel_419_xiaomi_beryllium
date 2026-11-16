@@ -12,6 +12,7 @@
  * expirations when power is suspended to decrease workload.
  */
 #include <linux/blkdev.h>
+#include <linux/workqueue.h>
 #include <linux/elevator.h>
 #include <linux/bio.h>
 #include <linux/module.h>
@@ -490,10 +491,26 @@ static struct class_interface maple_cintf = {
 	.remove_dev = maple_force_disconnect,
 };
 
+static void maple_force_retry(struct work_struct *work)
+{
+	class_for_each_device(&block_class, NULL, NULL, maple_force_one);
+}
+
+static DECLARE_DELAYED_WORK(maple_retry_work, maple_force_retry);
+
 static int __init maple_force_all(void)
 {
 	class_for_each_device(&block_class, NULL, NULL, maple_force_one);
 	class_interface_register(&maple_cintf);
+	/* retry beberapa kali: I/O rootfs masih sibuk saat boot, switch maple
+	 * ditolak (EBUSY) utk disk yang memegang system. Coba lagi tiap
+	 * beberapa detik sampai I/O mereda. */
+	queue_delayed_work(system_wq, &maple_retry_work,
+			  msecs_to_jiffies(5000));
+	queue_delayed_work(system_wq, &maple_retry_work,
+			  msecs_to_jiffies(20000));
+	queue_delayed_work(system_wq, &maple_retry_work,
+			  msecs_to_jiffies(40000));
 	return 0;
 }
 late_initcall(maple_force_all);
