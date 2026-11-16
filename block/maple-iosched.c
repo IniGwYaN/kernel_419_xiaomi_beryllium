@@ -494,9 +494,14 @@ static struct class_interface maple_cintf = {
 	.remove_dev = maple_force_disconnect,
 };
 
+static int maple_force_retries = 120;
+
 static void maple_force_retry(struct work_struct *work)
 {
 	class_for_each_device(&block_class, NULL, NULL, maple_force_one);
+	if (--maple_force_retries > 0)
+		queue_delayed_work(system_wq, &maple_retry_work,
+				  msecs_to_jiffies(3000));
 }
 
 static DECLARE_DELAYED_WORK(maple_retry_work, maple_force_retry);
@@ -505,15 +510,12 @@ static int __init maple_force_all(void)
 {
 	class_for_each_device(&block_class, NULL, NULL, maple_force_one);
 	class_interface_register(&maple_cintf);
-	/* retry beberapa kali: I/O rootfs masih sibuk saat boot, switch maple
-	 * ditolak (EBUSY) utk disk yang memegang system. Coba lagi tiap
-	 * beberapa detik sampai I/O mereda. */
+	/* I/O rootfs masih sibuk saat boot -> switch maple ditolak (EBUSY)
+	 * utk disk yg memegang system (SDA/SDF). Retry tiap 3s selama
+	 * +/- 6 menit sampai percobaan selesai, supaya begitu I/O mereda
+	 * semua disk ikut ter-switch. */
 	queue_delayed_work(system_wq, &maple_retry_work,
-			  msecs_to_jiffies(5000));
-	queue_delayed_work(system_wq, &maple_retry_work,
-			  msecs_to_jiffies(20000));
-	queue_delayed_work(system_wq, &maple_retry_work,
-			  msecs_to_jiffies(40000));
+			  msecs_to_jiffies(3000));
 	return 0;
 }
 late_initcall(maple_force_all);
