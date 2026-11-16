@@ -27,12 +27,12 @@
 enum { ASYNC, SYNC };
 
 /* Tunables */
-static const int sync_read_expire = 350;	/* max time before a read sync is submitted. */
-static const int sync_write_expire = 550;	/* max time before a write sync is submitted. */
-static const int async_read_expire = 250;	/* ditto for read async, these limits are SOFT! */
-static const int async_write_expire = 450;	/* ditto for write async, these limits are SOFT! */
-static const int fifo_batch = 16;		/* # of sequential requests treated as one by the above parameters. */
-static const int writes_starved = 4;		/* max times reads can starve a write */
+static const int sync_read_expire = 200;	/* max time before a read sync is submitted. */
+static const int sync_write_expire = 450;	/* max time before a write sync is submitted. */
+static const int async_read_expire = 150;	/* ditto for read async, these limits are SOFT! */
+static const int async_write_expire = 400;	/* ditto for write async, these limits are SOFT! */
+static const int fifo_batch = 8;		/* # of sequential requests treated as one by the above parameters. */
+static const int writes_starved = 8;		/* max times reads can starve a write */
 static const int sleep_latency_multiple = 10;	/* multple for expire time when device is asleep */
 
 /* Elevator data */
@@ -456,15 +456,37 @@ static void __exit maple_exit(void)
 static int maple_force_one(struct device *dev, void *data)
 {
 	struct gendisk *disk = dev_to_disk(dev);
+	struct request_queue *q;
 
-	if (disk && disk->queue)
-		elv_iosched_store(disk->queue, "maple", 6);
+	if (!disk || !disk->queue)
+		return 0;
+	q = disk->queue;
+	if (q->mq_ops)
+		elv_iosched_store(q, "none", 4);
+	else
+		elv_iosched_store(q, "maple", 5);
 	return 0;
 }
+
+static int maple_force_probe(struct device *dev, struct class_interface *class_intf)
+{
+	return maple_force_one(dev, NULL);
+}
+
+static void maple_force_disconnect(struct device *dev, struct class_interface *class_intf)
+{
+}
+
+static struct class_interface maple_cintf = {
+	.class = &block_class,
+	.add_dev = maple_force_probe,
+	.remove_dev = maple_force_disconnect,
+};
 
 static int __init maple_force_all(void)
 {
 	class_for_each_device(&block_class, NULL, NULL, maple_force_one);
+	class_interface_register(&maple_cintf);
 	return 0;
 }
 late_initcall(maple_force_all);
