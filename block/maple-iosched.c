@@ -470,10 +470,8 @@ static int maple_force_one(struct device *dev, void *data)
 	/* Bake-in block-level tunables (smooth + gaming) */
 	q->nr_requests = 512;
 	q->backing_dev_info->ra_pages = 256 >> (PAGE_SHIFT - 10);
-	spin_lock_irq(q->queue_lock);
 	blk_queue_flag_set(QUEUE_FLAG_SAME_COMP, q);
 	blk_queue_flag_set(QUEUE_FLAG_SAME_FORCE, q);
-	spin_unlock_irq(q->queue_lock);
 	return 0;
 }
 
