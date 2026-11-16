@@ -463,9 +463,12 @@ static int maple_force_one(struct device *dev, void *data)
 		return 0;
 	q = disk->queue;
 
-	if (q->mq_ops)
-		elv_iosched_store(q, "none", 4);
-	else
+	if (q->mq_ops) {
+		if (!strncmp(disk->disk_name, "mmcblk", 7))
+			elv_iosched_store(q, "bfq", 4);
+		else
+			elv_iosched_store(q, "none", 4);
+	} else
 		elv_iosched_store(q, "maple", 5);
 
 	/* Bake-in block-level tunables (smooth + gaming) */
