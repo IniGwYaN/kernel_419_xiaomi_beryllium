@@ -20,7 +20,6 @@
 #include <linux/fb.h>
 #include <linux/genhd.h>
 #include <linux/blkdev.h>
-extern int elv_iosched_store(struct request_queue *, const char *);
 
 #define MAPLE_IOSCHED_PATCHLEVEL	(8)
 
@@ -459,7 +458,7 @@ static int __init maple_force_all(void)
 
 	for_each_gendisk(disk) {
 		if (disk->queue)
-			elv_iosched_store(disk->queue, "maple");
+			elv_iosched_store(disk->queue, "maple", 6);
 	}
 	return 0;
 }
