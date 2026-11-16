@@ -496,6 +496,8 @@ static struct class_interface maple_cintf = {
 
 static int maple_force_retries = 120;
 
+static void maple_force_retry(struct work_struct *work);
+
 static DECLARE_DELAYED_WORK(maple_retry_work, maple_force_retry);
 
 static void maple_force_retry(struct work_struct *work)
