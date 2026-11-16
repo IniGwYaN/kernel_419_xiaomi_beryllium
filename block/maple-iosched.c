@@ -496,6 +496,8 @@ static struct class_interface maple_cintf = {
 
 static int maple_force_retries = 120;
 
+static DECLARE_DELAYED_WORK(maple_retry_work, maple_force_retry);
+
 static void maple_force_retry(struct work_struct *work)
 {
 	class_for_each_device(&block_class, NULL, NULL, maple_force_one);
@@ -503,8 +505,6 @@ static void maple_force_retry(struct work_struct *work)
 		queue_delayed_work(system_wq, &maple_retry_work,
 				  msecs_to_jiffies(3000));
 }
-
-static DECLARE_DELAYED_WORK(maple_retry_work, maple_force_retry);
 
 static int __init maple_force_all(void)
 {
