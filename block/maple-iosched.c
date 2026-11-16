@@ -461,10 +461,19 @@ static int maple_force_one(struct device *dev, void *data)
 	if (!disk || !disk->queue)
 		return 0;
 	q = disk->queue;
+
 	if (q->mq_ops)
 		elv_iosched_store(q, "none", 4);
 	else
 		elv_iosched_store(q, "maple", 5);
+
+	/* Bake-in block-level tunables (smooth + gaming) */
+	q->nr_requests = 512;
+	q->backing_dev_info->ra_pages = 256 >> (PAGE_SHIFT - 10);
+	spin_lock_irq(q->queue_lock);
+	queue_flag_set(QUEUE_FLAG_SAME_COMP, q);
+	queue_flag_set(QUEUE_FLAG_SAME_FORCE, q);
+	spin_unlock_irq(q->queue_lock);
 	return 0;
 }
 
