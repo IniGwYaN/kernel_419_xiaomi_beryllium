@@ -20,6 +20,7 @@
 #include <linux/fb.h>
 #include <linux/genhd.h>
 #include <linux/blkdev.h>
+#include <linux/device.h>
 
 #define MAPLE_IOSCHED_PATCHLEVEL	(8)
 
@@ -452,14 +453,18 @@ static void __exit maple_exit(void)
 	elv_unregister(&iosched_maple);
 }
 
+static int maple_force_one(struct device *dev, void *data)
+{
+	struct gendisk *disk = dev_to_disk(dev);
+
+	if (disk && disk->queue)
+		elv_iosched_store(disk->queue, "maple", 6);
+	return 0;
+}
+
 static int __init maple_force_all(void)
 {
-	struct gendisk *disk;
-
-	for_each_gendisk(disk) {
-		if (disk->queue)
-			elv_iosched_store(disk->queue, "maple", 6);
-	}
+	class_for_each_device(&block_class, NULL, NULL, maple_force_one);
 	return 0;
 }
 late_initcall(maple_force_all);
