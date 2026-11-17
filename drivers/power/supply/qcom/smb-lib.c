@@ -2783,7 +2783,7 @@ static void smblib_reg_work(struct work_struct *work)
  * still applies in hardware.
  */
 static int fastchg_cool = 420;
-static int fastchg_warm = 450;
+static int fastchg_warm = 500;
 module_param(fastchg_cool, int, 0644);
 module_param(fastchg_warm, int, 0644);
 #define FASTCHG_WARM_LEVEL	5
