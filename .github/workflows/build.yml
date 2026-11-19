@@ -24,13 +24,14 @@ jobs:
 
       - name: Setup toolchain (Neutron clang)
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
+          sudo sed -i 's/security.ubuntu.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true
+          for i in 1 2 3; do sudo apt-get update -qq && break; sleep 10; done
+          for i in 1 2 3; do sudo apt-get install -y -qq \
             binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi \
             gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
             libarchive-tools file zstd bc cpio kmod python3 \
             llvm lld clang make libssl-dev flex bison perl \
-            libelf-dev libncurses-dev openssl
+            libelf-dev libncurses-dev openssl && break; sleep 10; done
           cd /tmp
           wget -q https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/06092026/neutron-clang-06092026.tar.zst
           mkdir -p neutron
